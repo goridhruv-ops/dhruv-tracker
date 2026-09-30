@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dhruv's Financial OS | Modern Budget Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Supabase & Chart.js CDNs (GitHub Pages Ready) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Pre-loaded Clean Setup for 1st October Fresh Start -->
+  <script src="initial_data.js"></script>
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="container header-content">
+      <div class="logo-area">
+        <div class="logo-icon">💰</div>
+        <div>
+          <div class="logo-title">Dhruv Gori | Financial OS</div>
+          <div class="logo-subtitle">Real-time Budget, Bank Balances & Automated Expense Tracker</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Month Selector -->
+        <div class="month-selector-wrapper">
+          <select id="monthSelect"></select>
+        </div>
+
+        <!-- Books of Accounts Setup (Start Date & Opening Balances) -->
+        <button class="btn btn-books" onclick="openBooksSetupModal()" title="Configure Books Start Date & Opening Balances">
+          📚 Books Setup
+        </button>
+
+        <!-- Transfer Funds Button -->
+        <button class="btn btn-secondary" onclick="openTransferModal()">
+          🔄 Transfer Funds
+        </button>
+
+        <!-- Primary Add Transaction Button -->
+        <button class="btn btn-primary" onclick="openAddTransactionModal()">
+          + Add Transaction
+        </button>
+
+        <!-- Gemini AI Copilot Button -->
+        <button class="btn btn-gemini" onclick="toggleGeminiChat()">
+          ✨ AI Copilot
+        </button>
+
+        <!-- Notifications Bell Button -->
+        <button class="btn btn-icon notif-bell-btn" id="notifBellBtn" onclick="toggleNotificationsDrawer()" title="Alerts & Intimations">
+          🔔<span id="headerNotifBadge" class="notif-badge" style="display:none;">0</span>
+        </button>
+
+        <!-- Supabase Settings Button -->
+        <button class="btn btn-icon" onclick="openSettingsModal()" title="Database & Gemini Settings">
+          ⚙️
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="btn btn-icon" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+          ☀️
+        </button>
+
+        <!-- Status Badge -->
+        <span id="syncStatusBadge" class="badge">● Local Mode</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="main-content">
+    <div class="container">
+
+      <!-- ========================================== -->
+      <!-- LIVE BANK BALANCES BANNER (HDFC & KOTAK)   -->
+      <!-- ========================================== -->
+      <section class="bank-balances-banner">
+        <!-- HDFC Bank Account Card -->
+        <div class="bank-card hdfc">
+          <div class="bank-info-left">
+            <div class="bank-brand hdfc-color">
+              <span>🏦</span> HDFC Bank Account
+            </div>
+            <div class="bank-balance-display" id="displayHdfcBalance">₹0</div>
+            <div class="bank-sub-text">Primary Salary, Debits & Bills</div>
+          </div>
+          <div class="bank-actions">
+            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
+              ⚙️ Opening Bal
+            </button>
+            <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
+              📜 Ledger
+            </button>
+          </div>
+        </div>
+
+        <!-- Kotak Bank Account Card -->
+        <div class="bank-card kotak">
+          <div class="bank-info-left">
+            <div class="bank-brand kotak-color">
+              <span>📈</span> Kotak Bank Account
+            </div>
+            <div class="bank-balance-display" id="displayKotakBalance">₹0</div>
+            <div class="bank-sub-text">Stock Investments & Liquidity</div>
+          </div>
+          <div class="bank-actions">
+            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openTransferModal()">
+              ➔ Transfer to HDFC
+            </button>
+            <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
+              📜 Ledger
+            </button>
+          </div>
+        </div>
+
+        <!-- Physical Cash in Hand -->
+        <div class="bank-card cash">
+          <div class="bank-info-left">
+            <div class="bank-brand cash-color">
+              <span>💵</span> Cash in Hand
+            </div>
+            <div class="bank-balance-display" id="displayCashBalance">₹0</div>
+            <div class="bank-sub-text">Physical Wallet (Manual Tracking)</div>
+          </div>
+          <div class="bank-actions">
+            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
+              ⚙️ Opening Bal
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs" style="margin-bottom: 1.5rem;">
+        <button class="nav-tab active" data-tab="overview">📊 Overview & Budgets</button>
+        <button class="nav-tab" data-tab="bank-ledgers">🏦 Dual Bank Ledgers</button>
+        <button class="nav-tab" data-tab="people-ledgers">👥 People Ledgers</button>
+        <button class="nav-tab" data-tab="cards-emis">💳 Cards & EMI Schedule</button>
+        <button class="nav-tab" data-tab="transactions">📜 All Transactions</button>
+        <button class="nav-tab" data-tab="review">
+          📥 Mail Inbox <span id="reviewBadgeCount" class="badge badge-review" style="display:none;">0</span>
+        </button>
+        <button class="nav-tab" data-tab="notifications">
+          🔔 Alerts & Intimations <span id="tabNotifBadge" class="badge" style="background:var(--warning); color:#fff; display:none;">0</span>
+        </button>
+        <button class="nav-tab" data-tab="parser">⚡ Quick SMS / Email Parser</button>
+        <button class="nav-tab" data-tab="analytics">📈 Visual Analytics</button>
+      </nav>
+
+      <!-- ========================================== -->
+      <!-- TAB 1: OVERVIEW & DASHBOARD                -->
+      <!-- ========================================== -->
+      <section id="overview" class="tab-pane active">
+        
+        <!-- Smart Alerts Banner (Card Due Soon & 70%+ Budget Head Alerts) -->
+        <div id="smartAlertsBanner" class="smart-alerts-banner" style="display: none;">
+          <div class="alerts-banner-content">
+            <span class="alerts-banner-icon">⚡</span>
+            <div class="alerts-banner-text" id="alertsBannerText">
+              <!-- Dynamically populated by JS -->
+            </div>
+          </div>
+          <div class="alerts-banner-actions">
+            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=notifications]').click()">
+              View Alerts
+            </button>
+            <button class="alerts-banner-dismiss" onclick="dismissSmartAlertsBanner()" title="Dismiss Banner">✕</button>
+          </div>
+        </div>
+
+        <!-- Executive KPI Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card card-income">
+            <div class="metric-header">
+              <span class="metric-label">Total Income</span>
+              <span class="metric-icon">💵</span>
+            </div>
+            <div class="metric-value" id="metricIncome">₹0</div>
+            <div class="metric-sub">Salary, Kotak & Reimbursed</div>
+          </div>
+
+          <div class="metric-card card-expense">
+            <div class="metric-header">
+              <span class="metric-label">Actual Living Spends</span>
+              <span class="metric-icon">🛒</span>
+            </div>
+            <div class="metric-value" id="metricExpense">₹0</div>
+            <div class="metric-sub">Direct Outflows (Zero double-counting)</div>
+          </div>
+
+          <div class="metric-card card-net">
+            <div class="metric-header">
+              <span class="metric-label">Net Leftover Balance</span>
+              <span class="metric-icon">💎</span>
+            </div>
+            <div class="metric-value" id="metricNet">₹0</div>
+            <div class="metric-sub">Income - Expenses - Debt - Savings</div>
+          </div>
+
+          <div class="metric-card card-savings">
+            <div class="metric-header">
+              <span class="metric-label">Savings & Investments</span>
+              <span class="metric-icon">📈</span>
+            </div>
+            <div class="metric-value" id="metricSavings">₹0</div>
+            <div class="metric-sub">Emergency Fund, Stocks, MFs</div>
+          </div>
+
+          <div class="metric-card card-debt">
+            <div class="metric-header">
+              <span class="metric-label">Debt & EMIs Paid</span>
+              <span class="metric-icon">💳</span>
+            </div>
+            <div class="metric-value" id="metricDebt">₹0</div>
+            <div class="metric-sub">iPhone 17 Pro, Watch EMI</div>
+          </div>
+
+          <div class="metric-card card-cards">
+            <div class="metric-header">
+              <span class="metric-label">Opening Rollover</span>
+              <span class="metric-icon">🔄</span>
+            </div>
+            <div class="metric-value" id="metricRollover">₹0</div>
+            <div class="metric-sub">Brought forward in Oct</div>
+          </div>
+        </div>
+
+        <!-- Dashboard Columns -->
+        <div class="dashboard-columns">
+          <!-- Cash Flow Summary -->
+          <div class="card-section">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">⚖️ Cash Flow Summary</h3>
+                <p class="section-desc">Clean bifurcation with zero double-counting</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Expected (Budget)</th>
+                    <th>Actual Spent</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="cashFlowSummaryBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Category Spend Doughnut -->
+          <div class="card-section">
+            <div class="section-header">
+              <div>
+                <h3 class="section-title">🍩 Spend Breakdown by Category</h3>
+                <p class="section-desc">Top living expense categories for this period</p>
+              </div>
+            </div>
+            <div style="height: 280px; position: relative;">
+              <canvas id="categoryDoughnutChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 2: DUAL BANK LEDGERS (HDFC & KOTAK)    -->
+      <!-- ========================================== -->
+      <section id="bank-ledgers" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">🏦 Dual Bank Ledgers (HDFC & Kotak)</h3>
+            <p class="section-desc">Real-time side-by-side debits, credits, and running account balances</p>
+          </div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary" onclick="openTransferModal()">🔄 New Transfer</button>
+            <button class="btn btn-primary" onclick="openBooksSetupModal()">⚙️ Set Opening Balances</button>
+          </div>
+        </div>
+
+        <div class="dashboard-columns">
+          <!-- HDFC Bank Ledger -->
+          <div class="card-section" style="border-top: 4px solid var(--hdfc-blue);">
+            <div class="section-header">
+              <h4 style="color:var(--hdfc-blue);">🏢 HDFC Bank Account Running Ledger</h4>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="hdfcLedgerTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Kotak Bank Ledger -->
+          <div class="card-section" style="border-top: 4px solid var(--kotak-red);">
+            <div class="section-header">
+              <h4 style="color:var(--kotak-red);">📈 Kotak Bank Account Running Ledger</h4>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="kotakLedgerTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 3: DYNAMIC PEOPLE LEDGERS              -->
+      <!-- ========================================== -->
+      <section id="people-ledgers" class="tab-pane">
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">👥 People & Reimbursement Ledgers</h3>
+              <p class="section-desc">Maintains individual ledgers with Opening Balances B/F for Dad, Bismarck, Anant, etc.</p>
+            </div>
+            <button class="btn btn-primary" onclick="openAddPersonModal()">
+              + Add New Person Ledger
+            </button>
+          </div>
+
+          <div id="personLedgersGrid" class="person-ledgers-grid"></div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 4: CARDS & EMI SCHEDULE                -->
+      <!-- ========================================== -->
+      <section id="cards-emis" class="tab-pane">
+        <!-- Credit Card Tracker -->
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">💳 Credit Card Limits & Outstanding Tracker</h3>
+              <p class="section-desc">Tracks total spend, bill payments, and available credit limit across all cards</p>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Card Name</th>
+                  <th>Credit Limit</th>
+                  <th>Spend This Mo</th>
+                  <th>Paid This Mo</th>
+                  <th>Closing Outstanding</th>
+                  <th>Payment Due Date</th>
+                  <th>Available Limit</th>
+                  <th>Utilization</th>
+                  <th>Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody id="creditCardTrackerBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- EMI & Debt Schedule -->
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">📅 Loan & EMI Payoff Schedule</h3>
+              <p class="section-desc">Tracking for active iPhone 17 Pro EMI (starts Oct) and historical loans</p>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Loan / Item</th>
+                  <th>Original Amount</th>
+                  <th>Monthly EMI</th>
+                  <th>Tenure</th>
+                  <th>Months Remaining</th>
+                  <th>Linked Card / Account</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="emiScheduleTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 5: TRANSACTIONS LEDGER                 -->
+      <!-- ========================================== -->
+      <section id="transactions" class="tab-pane">
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">📜 Transactions Ledger</h3>
+              <p class="section-desc">Transactions starting from your configured Books Start Date</p>
+            </div>
+            <span class="badge" id="txCountBadge" style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);">
+              0 Transactions
+            </span>
+          </div>
+
+          <!-- Filters Bar -->
+          <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+            <input type="text" id="txSearchInput" class="form-input" style="max-width: 280px;" placeholder="🔍 Search description, category..." oninput="renderTransactionsTable()">
+            
+            <select id="txTypeFilter" class="form-select" style="max-width: 160px;" onchange="renderTransactionsTable()">
+              <option value="all">All Types</option>
+              <option value="Expense">Expense</option>
+              <option value="Income">Income</option>
+              <option value="Debt">Debt</option>
+              <option value="Savings">Savings</option>
+              <option value="Transfer">Transfer</option>
+            </select>
+
+            <select id="txAccountFilter" class="form-select" style="max-width: 220px;" onchange="renderTransactionsTable()">
+              <option value="all">All Accounts</option>
+              <option value="HDFC Bank Account">HDFC Bank Account</option>
+              <option value="Kotak Bank Account">Kotak Bank Account</option>
+              <option value="ICICI - Amazon Pay Credit Card">ICICI - Amazon Pay</option>
+              <option value="ICICI - Coral Credit Card">ICICI - Coral</option>
+              <option value="American Express Credit Card">American Express</option>
+              <option value="Roar CC Rupay">Roar CC Rupay</option>
+              <option value="Cash">Cash</option>
+            </select>
+
+            <button class="btn btn-secondary" onclick="openAddTransactionModal()" style="margin-left: auto;">
+              + New Entry
+            </button>
+          </div>
+
+          <!-- Transactions Table -->
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Account</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 6: REVIEW INBOX (AUTO-CAPTURED)        -->
+      <!-- ========================================== -->
+      <section id="review" class="tab-pane">
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">📥 Mail Auto-Capture Review Inbox</h3>
+              <p class="section-desc">Unverified online transactions received from your Gmail land here automatically for 1-click verification</p>
+            </div>
+            <a href="gmail-automation/README.md" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem;">
+              ⚙️ Setup Gmail Script
+            </a>
+          </div>
+
+          <div id="reviewInboxList"></div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 7: QUICK PARSER (SMS / EMAIL TEXT)     -->
+      <!-- ========================================== -->
+      <section id="parser" class="tab-pane">
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">⚡ Instant SMS / Email Text Parser</h3>
+              <p class="section-desc">Paste any bank transaction SMS or alert email text below. The smart engine will extract the amount, detect the card, and assign the category instantly!</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Paste SMS or Email Alert Text:</label>
+            <textarea id="smartParserInput" class="form-textarea" rows="4" placeholder="Example: Rs. 654.00 spent on your ICICI Bank Credit Card ending in 4001 at Swiggy on 01-Oct-2026. Available limit is Rs. 85,000."></textarea>
+          </div>
+
+          <div id="parserResultPreview" style="display: none; margin-top: 1rem;"></div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 8: VISUAL ANALYTICS                    -->
+      <!-- ========================================== -->
+      <section id="analytics" class="tab-pane">
+        <div class="card-section">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">📈 Monthly Inflows vs Outflows</h3>
+              <p class="section-desc">Visual comparison of Income, Expenses, Debt, and Savings</p>
+            </div>
+          </div>
+          <div style="height: 350px; position: relative;">
+            <canvas id="cashflowBarChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 9: NOTIFICATIONS & INTIMATIONS CENTER  -->
+      <!-- ========================================== -->
+      <section id="notifications" class="tab-pane">
+        <div class="card-section">
+          
+          <div class="notif-center-header">
+            <div>
+              <h3 class="section-title">🔔 Alerts & Intimations Center</h3>
+              <p class="section-desc">Automated alerts for credit card bill due dates, 70% budget utilization warnings, and financial safeguards.</p>
+            </div>
+            
+            <div class="notif-controls-right">
+              <label style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:0.4rem;">
+                <span>⚠️ Budget Alert Trigger:</span>
+                <select id="notifThresholdSelect" class="notif-threshold-select" onchange="updateNotifThreshold(this.value)">
+                  <option value="60">60% of Head Budget</option>
+                  <option value="70" selected>70% of Head Budget (Recommended)</option>
+                  <option value="75">75% of Head Budget</option>
+                  <option value="80">80% of Head Budget</option>
+                  <option value="85">85% of Head Budget</option>
+                </select>
+              </label>
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="clearDismissedNotifications()">
+                🔄 Reset Dismissed
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter Chips -->
+          <div class="notif-filter-chips" style="margin-bottom: 1.25rem;">
+            <button class="notif-chip active" data-filter="all" onclick="filterNotifications('all', this)">All Alerts (<span id="notifCountAll">0</span>)</button>
+            <button class="notif-chip" data-filter="card_due" onclick="filterNotifications('card_due', this)">💳 Card Bill Due (<span id="notifCountCard">0</span>)</button>
+            <button class="notif-chip" data-filter="budget_head" onclick="filterNotifications('budget_head', this)">📊 70%+ Budget Head (<span id="notifCountBudget">0</span>)</button>
+            <button class="notif-chip" data-filter="urgent" onclick="filterNotifications('urgent', this)">⚠️ Urgent Only (<span id="notifCountUrgent">0</span>)</button>
+          </div>
+
+          <!-- Dynamic Notification Cards List -->
+          <div id="notifCardsList" class="notif-cards-list">
+            <!-- Injected by app.js -->
+          </div>
+
+          <!-- Credit Card Due Dates Quick Reference Table -->
+          <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <div class="section-header">
+              <div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.25rem;">💳 All Credit Cards Payment Due Dates Overview</h4>
+                <p class="section-desc">Auto-populated from bank statement emails or billing cycle rules with 1-click bill payment</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Card Name</th>
+                    <th>Statement Generation</th>
+                    <th>Payment Due Date</th>
+                    <th>Status</th>
+                    <th>Current Due Amount</th>
+                    <th>Quick Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="cardDueDatesSummaryBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- SLIDING NOTIFICATIONS DRAWER               -->
+  <!-- ========================================== -->
+  <div id="notificationsDrawer" class="notif-drawer">
+    <div class="notif-drawer-header">
+      <div style="display:flex; align-items:center; gap:0.5rem; font-weight:700; font-size:1.05rem;">
+        <span>🔔</span> Alerts & Intimations
+      </div>
+      <button class="modal-close" onclick="toggleNotificationsDrawer()">✕</button>
+    </div>
+    <div class="notif-drawer-body" id="drawerNotifList">
+      <!-- Injected by app.js -->
+    </div>
+    <div style="padding: 1rem 1.25rem; border-top: 1px solid var(--border-color); background: var(--bg-tertiary);">
+      <button class="btn btn-primary" style="width: 100%;" onclick="toggleNotificationsDrawer(); document.querySelector('[data-tab=notifications]').click();">
+        Open Full Alerts Center
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- FLOATING GEMINI AI COPILOT BUTTON & DRAWER -->
+  <!-- ========================================== -->
+  <button class="gemini-fab" onclick="toggleGeminiChat()" title="Chat with Gemini AI Copilot">
+    ✨ Ask Gemini Copilot
+  </button>
+
+  <div id="geminiChatDrawer" class="chat-drawer">
+    <div class="chat-header">
+      <div class="chat-header-title">
+        <span>✨</span> Gemini Financial Copilot
+      </div>
+      <button class="modal-close" style="color:#fff;" onclick="toggleGeminiChat()">✕</button>
+    </div>
+
+    <div id="geminiChatMessages" class="chat-messages"></div>
+
+    <div class="chat-quick-chips">
+      <span class="chat-chip" onclick="handleQuickPrompt(this)">💰 Check Bank Balances</span>
+      <span class="chat-chip" onclick="handleQuickPrompt(this)">🤝 Bismarck Ledger</span>
+      <span class="chat-chip" onclick="handleQuickPrompt(this)">📊 Total Spends This Month</span>
+      <span class="chat-chip" onclick="handleQuickPrompt(this)">🔄 Transfer 5000 from Kotak to HDFC</span>
+    </div>
+
+    <div class="chat-input-bar">
+      <input type="text" id="geminiChatInput" placeholder="Ask anything or log an expense...">
+      <button class="btn btn-primary" style="padding: 0.5rem 0.85rem;" onclick="sendGeminiChatMessage()">
+        ➤
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: BOOKS OF ACCOUNTS & OPENING BALANCES-->
+  <!-- ========================================== -->
+  <div id="booksSetupModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">📚 Books of Accounts & Opening Balances</h3>
+        <button class="modal-close" onclick="closeBooksSetupModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          Configure your books starting date and starting balances for all accounts, cards, and person ledgers.
+        </p>
+
+        <!-- Start Date -->
+        <div class="form-group">
+          <label class="form-label">📅 Books Start Date</label>
+          <input type="date" id="booksStartDateInput" class="form-input" value="2026-10-01" required>
+        </div>
+
+        <!-- Section 1: Bank Accounts -->
+        <div class="books-setup-section">
+          <div class="books-setup-title">
+            <span>🏦 Bank Accounts Opening Balances</span>
+          </div>
+          
+          <div class="opening-row">
+            <div><strong>HDFC Bank Account</strong><br><small style="color:var(--text-muted)">Opening Balance</small></div>
+            <input type="number" step="0.01" id="openBalHdfc" class="form-input" placeholder="0.00">
+          </div>
+
+          <div class="opening-row">
+            <div><strong>Kotak Bank Account</strong><br><small style="color:var(--text-muted)">Opening Balance</small></div>
+            <input type="number" step="0.01" id="openBalKotak" class="form-input" placeholder="0.00">
+          </div>
+
+          <div class="opening-row">
+            <div><strong>Cash in Hand</strong><br><small style="color:var(--text-muted)">Opening Balance</small></div>
+            <input type="number" step="0.01" id="openBalCash" class="form-input" placeholder="0.00">
+          </div>
+        </div>
+
+        <!-- Section 2: Credit Cards Opening Outstanding -->
+        <div class="books-setup-section">
+          <div class="books-setup-title">
+            <span>💳 Credit Cards Opening Outstanding (B/F from previous month)</span>
+          </div>
+          <div id="cardOpeningsList"></div>
+        </div>
+
+        <!-- Section 3: Person Ledgers Opening Balances -->
+        <div class="books-setup-section">
+          <div class="books-setup-title">
+            <span>👥 People Ledgers Opening Balance B/F</span>
+          </div>
+          <div id="personOpeningsList"></div>
+        </div>
+
+        <!-- Reset / Fresh Start Controls -->
+        <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; gap:0.5rem;">
+          <button type="button" class="btn btn-primary" style="background:#dc2626;" onclick="freshStartFromDate()">
+            ⚡ Fresh Start: Clear Active Ledger from Start Date
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="restoreArchivedData()">
+            🔄 Restore Archived July-Sept Excel Data
+          </button>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeBooksSetupModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveBooksSetup()">Save & Apply Balances</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD / EDIT TRANSACTION              -->
+  <!-- ========================================== -->
+  <div id="txModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">Add New Transaction</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <input type="hidden" id="txTypeInput" value="Expense">
+        <label class="form-label">Transaction Bifurcation</label>
+        <div class="type-segmented-control">
+          <button type="button" class="type-btn active" data-type="Expense" onclick="handleTypeBtnClick(this)">Expense</button>
+          <button type="button" class="type-btn" data-type="Income" onclick="handleTypeBtnClick(this)">Income</button>
+          <button type="button" class="type-btn" data-type="Debt" onclick="handleTypeBtnClick(this)">Debt</button>
+          <button type="button" class="type-btn" data-type="Savings" onclick="handleTypeBtnClick(this)">Savings</button>
+          <button type="button" class="type-btn" data-type="Transfer" onclick="handleTypeBtnClick(this)">Card Bill</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" id="txDateInput" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (₹)</label>
+            <input type="number" step="0.01" id="txAmountInput" class="form-input" placeholder="0.00" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category Head</label>
+          <select id="txCategoryInput" class="form-select"></select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account / Payment Method</label>
+          <select id="txAccountInput" class="form-select"></select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description / Merchant</label>
+          <input type="text" id="txDescInput" class="form-input" placeholder="e.g. Swiggy, Petrol, Train Ticket">
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveTransaction()">Save Transaction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: INTERNAL TRANSFER                   -->
+  <!-- ========================================== -->
+  <div id="transferModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">🔄 Internal Funds Transfer</h3>
+        <button class="modal-close" onclick="closeTransferModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Transfer money between your own accounts (e.g. Kotak ➔ HDFC or HDFC ➔ Cash). This does not affect your Income/Expense metrics.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">From Account (Source)</label>
+            <select id="transferFromInput" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Account (Destination)</label>
+            <select id="transferToInput" class="form-select"></select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Amount (₹)</label>
+            <input type="number" id="transferAmountInput" class="form-input" placeholder="0.00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" id="transferDateInput" class="form-input" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Note / Reference</label>
+          <input type="text" id="transferNoteInput" class="form-input" placeholder="e.g. Stock profit withdrawal, ATM cash">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeTransferModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="executeInternalTransfer()">Execute Transfer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ADD DYNAMIC PERSON LEDGER           -->
+  <!-- ========================================== -->
+  <div id="personModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">👤 Add New Person Ledger</h3>
+        <button class="modal-close" onclick="closePersonModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Enter the person's name (e.g. Mom, Anant, Rahul, Landlord). The system will automatically create '[Name] - Paid' and '[Name] - Reimbursed' tracking categories for them.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Person / Entity Name</label>
+          <input type="text" id="newPersonNameInput" class="form-input" placeholder="e.g. Anant, Mom, Priya">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Opening Balance B/F (₹)</label>
+          <input type="number" step="0.01" id="newPersonOpeningInput" class="form-input" value="0.00" placeholder="Amount they owe you as of start date">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closePersonModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveNewPerson()">Create Ledger</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: EDIT CARD PAYMENT DUE DATE          -->
+  <!-- ========================================== -->
+  <div id="cardDueDateModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">💳 Edit Card Payment Due Date & Bill</h3>
+        <button class="modal-close" onclick="closeCardDueDateModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCardNameInput">
+        <div class="form-group">
+          <label class="form-label">Credit Card</label>
+          <input type="text" id="displayEditCardName" class="form-input" disabled style="background:var(--bg-tertiary); font-weight:600;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">📅 Payment Due Date</label>
+          <input type="date" id="editCardDueDateInput" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">💵 Statement / Bill Amount Due (₹)</label>
+          <input type="number" step="0.01" id="editCardBillAmountInput" class="form-input" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bill Payment Status</label>
+          <select id="editCardBillStatusInput" class="form-select">
+            <option value="Pending">Pending (Unpaid)</option>
+            <option value="Paid">✓ Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeCardDueDateModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveCardDueDate()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: SETTINGS & GEMINI API CONFIG        -->
+  <!-- ========================================== -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ Database & AI Settings</h3>
+        <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <h4 style="margin-bottom:0.5rem; font-size:0.95rem;">1. Supabase Database</h4>
+        <div class="form-group">
+          <label class="form-label">Supabase Project URL</label>
+          <input type="text" id="sbUrlInput" class="form-input" placeholder="https://xyzcompany.supabase.co">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Supabase Anon Public API Key</label>
+          <input type="password" id="sbKeyInput" class="form-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+
+        <h4 style="margin-top:1.5rem; margin-bottom:0.5rem; font-size:0.95rem;">2. Google Gemini AI Copilot</h4>
+        <div class="form-group">
+          <label class="form-label">Google Gemini API Key (Optional)</label>
+          <input type="password" id="geminiKeyInput" class="form-input" placeholder="AIzaSy...">
+          <small style="color:var(--text-muted); font-size:0.75rem;">Get a free API key at aistudio.google.com for full generative reasoning.</small>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Core Controller Script -->
+  <script src="app.js"></script>
+</body>
+</html>
