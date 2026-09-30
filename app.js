@@ -333,6 +333,64 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Passcode Setup Modal Input Handling
+  const setupPinInput = document.getElementById("setupPinInput");
+  const setupConfirmPinInput = document.getElementById("setupConfirmPinInput");
+  if (setupPinInput && setupConfirmPinInput) {
+    setupPinInput.addEventListener("input", (e) => {
+      if (e.target.value.length === 4) {
+        setupConfirmPinInput.focus();
+      }
+    });
+    setupPinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setupConfirmPinInput.focus();
+      }
+    });
+    setupConfirmPinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        savePasscodeFromModal();
+      }
+    });
+  }
+
+  // Backdrop click to dismiss passcode setup modal
+  const pSetupModal = document.getElementById("passcodeSetupModal");
+  if (pSetupModal) {
+    pSetupModal.addEventListener("click", (e) => {
+      if (e.target.id === "passcodeSetupModal") {
+        closePasscodeSetupModal();
+      }
+    });
+  }
+
+  // Global keyboard shortcuts (Shift+L for Lock) & lock screen numpad support
+  window.addEventListener("keydown", (e) => {
+    // Shift + L: Quick Lock / Open Passcode Setup
+    if (e.shiftKey && (e.key === "L" || e.key === "l")) {
+      e.preventDefault();
+      handleHeaderLockClick();
+      return;
+    }
+
+    // Physical keypad support on lock screen
+    if (State.security.isLocked) {
+      const qModal = document.getElementById("quickLogModal");
+      const isQuickLogOpen = qModal && qModal.classList.contains("active");
+      if (!isQuickLogOpen) {
+        if (e.key >= "0" && e.key <= "9") {
+          e.preventDefault();
+          enterPinDigit(e.key);
+        } else if (e.key === "Backspace") {
+          e.preventDefault();
+          deletePinDigit();
+        }
+      }
+    }
+  });
 }
 
 function populateMonthFilter() {
@@ -750,20 +808,20 @@ function renderDynamicPersonLedgers(ledgers) {
 
         <div class="person-stat-line">
           <span style="color:var(--text-muted)">Opening B/F:</span>
-          <strong>₹${Math.round(p.openingBalance || 0).toLocaleString("en-IN")}</strong>
+          <strong class="privacy-sensitive">₹${Math.round(p.openingBalance || 0).toLocaleString("en-IN")}</strong>
         </div>
         <div class="person-stat-line">
           <span style="color:var(--text-muted)">Paid in Oct:</span>
-          <strong>₹${Math.round(p.totalPaid).toLocaleString("en-IN")}</strong>
+          <strong class="privacy-sensitive">₹${Math.round(p.totalPaid).toLocaleString("en-IN")}</strong>
         </div>
         <div class="person-stat-line">
           <span style="color:var(--text-muted)">Reimbursed:</span>
-          <strong style="color:var(--income);">₹${Math.round(p.totalReimbursed).toLocaleString("en-IN")}</strong>
+          <strong class="privacy-sensitive" style="color:var(--income);">₹${Math.round(p.totalReimbursed).toLocaleString("en-IN")}</strong>
         </div>
 
         <div class="person-balance-box">
           <span>Net Balance:</span>
-          <span style="color: ${isSettled ? 'var(--income)' : 'var(--expense)'}; font-size: 1.1rem;">
+          <span class="person-card-balance privacy-sensitive" style="color: ${isSettled ? 'var(--income)' : 'var(--expense)'}; font-size: 1.1rem;">
             ₹${Math.abs(Math.round(p.balanceReceivable)).toLocaleString("en-IN")}
             <small style="font-size:0.75rem; color:var(--text-secondary);">${isOwed ? '(You get back)' : (isSettled ? '' : '(You owe)')}</small>
           </span>
@@ -781,8 +839,8 @@ function renderEmiSchedule() {
   tbody.innerHTML = State.emiSchedule.map(e => `
     <tr>
       <td><strong>${e.name}</strong></td>
-      <td>₹${e.original_amount.toLocaleString("en-IN")}</td>
-      <td><strong>₹${e.monthly_emi.toLocaleString("en-IN")}</strong> / mo</td>
+      <td class="privacy-sensitive">₹${e.original_amount.toLocaleString("en-IN")}</td>
+      <td><strong class="emi-amount-badge privacy-sensitive">₹${e.monthly_emi.toLocaleString("en-IN")}</strong> / mo</td>
       <td>${e.total_tenure} mos</td>
       <td>
         <span class="badge" style="background:${e.months_remaining > 0 ? 'var(--primary)' : 'var(--income)'}; color:#fff;">
@@ -876,7 +934,7 @@ function renderCreditCardTracker() {
         <div class="card-top-row">
           <div class="card-bank-info">
             <span class="card-bank-name">${c.name}</span>
-            <span class="card-type-tag">Cycle: ${c.billing_cycle_day || 1}st of month</span>
+            <span class="card-type-tag">Cycle: ${formatDayOrdinal(c.billing_cycle_day || 1)} of month</span>
           </div>
           <div class="card-network-logo">${network}</div>
         </div>
@@ -886,7 +944,7 @@ function renderCreditCardTracker() {
 
         <!-- 16-Digit Card Number Box -->
         <div class="card-number-box">
-          <span class="card-number-val" id="cardNumVal_${safeCardId}">${maskedNum}</span>
+          <span class="card-number-val privacy-sensitive" id="cardNumVal_${safeCardId}">${maskedNum}</span>
           <div style="display:flex; gap:0.25rem;">
             ${hasNum ? `<button type="button" class="card-btn-inline" onclick="toggleCardNumberVisibility('${safeCardId}', '${vault.cardNumber}')" title="Show / Hide Number">👁️</button>` : ''}
             <button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.cardNumber || ''}', 'Card Number')" title="Copy 16-digit Number">📋</button>
@@ -898,14 +956,14 @@ function renderCreditCardTracker() {
           <div class="vault-field-group">
             <span class="vault-field-label">Expires</span>
             <div class="vault-field-val-wrap">
-              <span class="vault-field-val">${expiry}</span>
+              <span class="vault-field-val privacy-sensitive">${expiry}</span>
               ${vault.expiry ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.expiry}', 'Expiry Date')">📋</button>` : ''}
             </div>
           </div>
           <div class="vault-field-group">
             <span class="vault-field-label">CVV</span>
             <div class="vault-field-val-wrap">
-              <span class="vault-field-val" id="cvvVal_${safeCardId}">•••</span>
+              <span class="vault-field-val card-cvv-val privacy-sensitive" id="cvvVal_${safeCardId}">•••</span>
               ${vault.cvv ? `<button type="button" class="card-btn-inline" onclick="toggleCvvVisibility('${safeCardId}', '${vault.cvv}')">👁️</button>` : ''}
               ${vault.cvv ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.cvv}', 'CVV')">📋</button>` : ''}
             </div>
@@ -913,7 +971,7 @@ function renderCreditCardTracker() {
           <div class="vault-field-group">
             <span class="vault-field-label">ATM PIN</span>
             <div class="vault-field-val-wrap">
-              <span class="vault-field-val" id="pinVal_${safeCardId}">••••</span>
+              <span class="vault-field-val card-pin-val privacy-sensitive" id="pinVal_${safeCardId}">••••</span>
               ${vault.pin ? `<button type="button" class="card-btn-inline" onclick="togglePinVisibility('${safeCardId}', '${vault.pin}')">👁️</button>` : ''}
               ${vault.pin ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.pin}', 'Card PIN')">📋</button>` : ''}
             </div>
@@ -933,7 +991,7 @@ function renderCreditCardTracker() {
 
           <div class="card-stats-split" style="margin-bottom:0.65rem;">
             <span>${dueBadgeHtml}</span>
-            <span style="font-size:0.75rem; opacity:0.85;">Limit: ₹${(c.credit_limit || 0).toLocaleString("en-IN")}</span>
+            <span style="font-size:0.75rem; opacity:0.85;">Limit: <strong class="card-limit-val privacy-sensitive">₹${(c.credit_limit || 0).toLocaleString("en-IN")}</strong></span>
           </div>
 
           <!-- Quick Actions -->
@@ -990,14 +1048,14 @@ function renderCreditCardTracker() {
       return `
         <tr>
           <td><strong>${c.name}</strong></td>
-          <td>₹${(c.credit_limit || 0).toLocaleString("en-IN")}</td>
-          <td>₹${Math.round(spends).toLocaleString("en-IN")}</td>
-          <td>₹${Math.round(paid).toLocaleString("en-IN")}</td>
-          <td style="font-weight: 700; color: ${closing > 0 ? 'var(--expense)' : 'var(--income)'}">
+          <td class="card-limit-val privacy-sensitive">₹${(c.credit_limit || 0).toLocaleString("en-IN")}</td>
+          <td class="privacy-sensitive">₹${Math.round(spends).toLocaleString("en-IN")}</td>
+          <td class="privacy-sensitive">₹${Math.round(paid).toLocaleString("en-IN")}</td>
+          <td class="privacy-sensitive" style="font-weight: 700; color: ${closing > 0 ? 'var(--expense)' : 'var(--income)'}">
             ₹${Math.round(closing).toLocaleString("en-IN")}
           </td>
           <td>${formatPrettyDate(dueDateStr)}</td>
-          <td>₹${Math.round(available).toLocaleString("en-IN")}</td>
+          <td class="privacy-sensitive">₹${Math.round(available).toLocaleString("en-IN")}</td>
           <td>${utilPct}% limit</td>
           <td>
             <div style="display:flex; align-items:center; gap:0.35rem;">
@@ -1012,12 +1070,12 @@ function renderCreditCardTracker() {
     tableRows.push(`
       <tr style="font-weight: 800; background: var(--bg-tertiary);">
         <td>TOTAL CREDIT CARDS</td>
-        <td>₹${totalLimit.toLocaleString("en-IN")}</td>
-        <td>₹${Math.round(totalSpend).toLocaleString("en-IN")}</td>
-        <td>₹${Math.round(totalPaid).toLocaleString("en-IN")}</td>
-        <td style="color: var(--expense)">₹${Math.round(totalClosing).toLocaleString("en-IN")}</td>
+        <td class="card-limit-val privacy-sensitive">₹${totalLimit.toLocaleString("en-IN")}</td>
+        <td class="privacy-sensitive">₹${Math.round(totalSpend).toLocaleString("en-IN")}</td>
+        <td class="privacy-sensitive">₹${Math.round(totalPaid).toLocaleString("en-IN")}</td>
+        <td class="privacy-sensitive" style="color: var(--expense)">₹${Math.round(totalClosing).toLocaleString("en-IN")}</td>
         <td>-</td>
-        <td>₹${Math.round(totalLimit - totalClosing).toLocaleString("en-IN")}</td>
+        <td class="privacy-sensitive">₹${Math.round(totalLimit - totalClosing).toLocaleString("en-IN")}</td>
         <td>${totalLimit > 0 ? Math.round((totalClosing / totalLimit) * 100) : 0}% aggregate</td>
         <td>-</td>
       </tr>
@@ -2007,6 +2065,8 @@ async function saveSupabaseSettings() {
       localStorage.setItem("tracker_pin_enabled", "true");
       localStorage.setItem("tracker_pin_hash", hash);
       localStorage.setItem("tracker_pin_salt", salt);
+      localStorage.setItem("tracker_has_prompted_pin", "true");
+      sessionStorage.setItem("tracker_pin_session", enteredPin);
 
       // Derive AES key for in-memory encryption
       const derivedKey = await VaultCrypto.deriveAesKey(enteredPin, salt);
@@ -2022,6 +2082,9 @@ async function saveSupabaseSettings() {
     if (bioCheck) {
       State.security.bioEnabled = bioCheck.checked;
       localStorage.setItem("tracker_bio_enabled", bioCheck.checked ? "true" : "false");
+      if (bioCheck.checked && !localStorage.getItem("tracker_bio_cred_id")) {
+        localStorage.setItem("tracker_bio_cred_id", "enrolled");
+      }
     }
 
     if (autoLockSelect) {
@@ -2031,6 +2094,14 @@ async function saveSupabaseSettings() {
   } else {
     State.security.pinEnabled = false;
     localStorage.setItem("tracker_pin_enabled", "false");
+  }
+
+  updateHeaderLockButton();
+  const bioBtn = document.getElementById("bioUnlockBtn");
+  if (bioBtn) {
+    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
+    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
+    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
   }
 
   if (initSupabase()) {
@@ -2112,6 +2183,33 @@ function clearDismissedNotifications() {
   showToast("All dismissed alerts restored!", "success");
   const fin = calculateFinancials();
   renderNotifications(fin);
+}
+
+function getOrdinalSuffix(day) {
+  const n = Math.abs(parseInt(day, 10));
+  if (isNaN(n)) return "";
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) {
+    return "th";
+  }
+  switch (n % 10) {
+    case 1: return "st";
+    case 2: return "nd";
+    case 3: return "rd";
+    default: return "th";
+  }
+}
+
+function formatDayOrdinal(day) {
+  if (day === null || day === undefined || day === "") return "";
+  const n = parseInt(day, 10);
+  if (isNaN(n)) return `${day}`;
+  return `${n}${getOrdinalSuffix(n)}`;
+}
+
+if (typeof window !== "undefined") {
+  window.getOrdinalSuffix = getOrdinalSuffix;
+  window.formatDayOrdinal = formatDayOrdinal;
 }
 
 function formatPrettyDate(dateStr) {
@@ -2601,7 +2699,7 @@ function renderCardDueDatesSummaryTable() {
     return `
       <tr>
         <td><strong>${c.name}</strong></td>
-        <td>${c.billing_cycle_day || 1}th of month</td>
+        <td>${formatDayOrdinal(c.billing_cycle_day || 1)} of month</td>
         <td><strong>${formatPrettyDate(dueDateStr)}</strong></td>
         <td>${statusPill}</td>
         <td style="font-weight:700; color:${isPaid ? 'var(--income)' : 'var(--expense)'}">₹${Math.round(billAmt).toLocaleString("en-IN")}</td>
@@ -2842,22 +2940,171 @@ function initSecurity() {
   State.security.bioEnabled = localStorage.getItem("tracker_bio_enabled") === "true";
   State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
 
-  // Hide biometric button if not supported or not enrolled
+  // Hide biometric button if not supported or not enrolled without distorting 3x4 numpad grid
   const bioBtn = document.getElementById("bioUnlockBtn");
   if (bioBtn) {
-    bioBtn.style.display = (window.PublicKeyCredential && State.security.bioEnabled) ? "flex" : "none";
+    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
+    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
+    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
   }
+
+  updateHeaderLockButton();
 
   // Lock on startup if PIN protection is active
   if (State.security.pinEnabled && State.security.pinHash) {
     lockApp();
+  } else {
+    // First-run passcode setup prompt: gentle 1.2s delay if never prompted
+    const hasPrompted = localStorage.getItem("tracker_has_prompted_pin");
+    if (!hasPrompted) {
+      localStorage.setItem("tracker_has_prompted_pin", "true");
+      setTimeout(() => {
+        openPasscodeSetupModal();
+      }, 1200);
+    }
   }
 
   initAutoLock();
 }
 
+function updateHeaderLockButton() {
+  const lockBtn = document.getElementById("headerLockBtn");
+  if (!lockBtn) return;
+  if (State.security.pinEnabled && State.security.pinHash) {
+    lockBtn.title = "Lock Financial OS (Passcode Protected) [Shift + L]";
+  } else {
+    lockBtn.title = "Set Up 4-Digit Passcode Protection [Shift + L]";
+  }
+}
+
+function handleHeaderLockClick() {
+  if (State.security.pinEnabled && State.security.pinHash) {
+    lockApp();
+    showToast("App Locked 🔒", "info");
+  } else {
+    openPasscodeSetupModal();
+  }
+}
+
+function openPasscodeSetupModal() {
+  const modal = document.getElementById("passcodeSetupModal");
+  if (!modal) return;
+
+  const pinInput = document.getElementById("setupPinInput");
+  const confirmInput = document.getElementById("setupConfirmPinInput");
+  const bioCheck = document.getElementById("setupBioAuthCheckbox");
+  const autoLockSelect = document.getElementById("setupAutoLockSelect");
+
+  if (pinInput) pinInput.value = "";
+  if (confirmInput) confirmInput.value = "";
+  if (bioCheck) {
+    bioCheck.checked = !!(window.PublicKeyCredential && (State.security.bioEnabled || !localStorage.getItem("tracker_bio_enabled")));
+  }
+  if (autoLockSelect) {
+    autoLockSelect.value = State.security.autoLockTimeout || "180000";
+  }
+
+  modal.classList.add("active");
+  setTimeout(() => {
+    if (pinInput) pinInput.focus();
+  }, 150);
+}
+
+function closePasscodeSetupModal() {
+  const modal = document.getElementById("passcodeSetupModal");
+  if (modal) modal.classList.remove("active");
+}
+
+async function savePasscodeFromModal() {
+  const pinInput = document.getElementById("setupPinInput");
+  const confirmInput = document.getElementById("setupConfirmPinInput");
+  const bioCheck = document.getElementById("setupBioAuthCheckbox");
+  const autoLockSelect = document.getElementById("setupAutoLockSelect");
+
+  const pin = pinInput ? pinInput.value.trim() : "";
+  const confirmPin = confirmInput ? confirmInput.value.trim() : "";
+
+  if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    showToast("Passcode must be exactly 4 digits (0-9)!", "warning");
+    pinInput?.focus();
+    return;
+  }
+
+  if (pin !== confirmPin) {
+    showToast("Passcodes do not match. Please re-enter!", "error");
+    if (confirmInput) {
+      confirmInput.value = "";
+      confirmInput.focus();
+    }
+    return;
+  }
+
+  try {
+    const salt = VaultCrypto.generateSalt();
+    const hash = await VaultCrypto.hashPin(pin, salt);
+    const derivedKey = await VaultCrypto.deriveAesKey(pin, salt);
+
+    State.security.pinEnabled = true;
+    State.security.pinHash = hash;
+    State.security.pinSalt = salt;
+    State.security.inMemoryKey = derivedKey;
+
+    localStorage.setItem("tracker_pin_enabled", "true");
+    localStorage.setItem("tracker_pin_hash", hash);
+    localStorage.setItem("tracker_pin_salt", salt);
+    localStorage.setItem("tracker_has_prompted_pin", "true");
+    sessionStorage.setItem("tracker_pin_session", pin);
+
+    const bioEnabled = bioCheck ? bioCheck.checked : false;
+    State.security.bioEnabled = bioEnabled;
+    localStorage.setItem("tracker_bio_enabled", bioEnabled ? "true" : "false");
+    if (bioEnabled && !localStorage.getItem("tracker_bio_cred_id")) {
+      localStorage.setItem("tracker_bio_cred_id", "enrolled");
+    }
+
+    if (autoLockSelect) {
+      State.security.autoLockTimeout = autoLockSelect.value;
+      localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
+    }
+
+    // Preserve 3x4 numpad grid alignment
+    const bioBtn = document.getElementById("bioUnlockBtn");
+    if (bioBtn) {
+      const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
+      bioBtn.style.visibility = hasBio ? "visible" : "hidden";
+      bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+    }
+
+    // Sync settings modal fields if present
+    const settingsPinCheck = document.getElementById("securityPinEnabledCheckbox");
+    if (settingsPinCheck) settingsPinCheck.checked = true;
+    const pinSec = document.getElementById("pinConfigSection");
+    if (pinSec) pinSec.style.display = "block";
+    const masterPin = document.getElementById("masterPinInput");
+    if (masterPin) masterPin.value = "••••";
+    const settingsBioCheck = document.getElementById("bioAuthEnabledCheckbox");
+    if (settingsBioCheck) settingsBioCheck.checked = bioEnabled;
+    const settingsAutoLock = document.getElementById("autoLockTimeoutSelect");
+    if (settingsAutoLock && autoLockSelect) settingsAutoLock.value = autoLockSelect.value;
+
+    updateHeaderLockButton();
+    closePasscodeSetupModal();
+    showToast("Passcode set successfully! Locking Financial OS 🔒", "success");
+
+    setTimeout(() => {
+      lockApp();
+    }, 350);
+  } catch (err) {
+    console.error("Error setting up passcode:", err);
+    showToast("Failed to initialize passcode encryption.", "error");
+  }
+}
+
 function lockApp() {
-  if (!State.security.pinEnabled || !State.security.pinHash) return;
+  if (!State.security.pinEnabled || !State.security.pinHash) {
+    openPasscodeSetupModal();
+    return;
+  }
   State.security.isLocked = true;
   State.security.inMemoryKey = null;
   State.security.activePinBuffer = "";
@@ -2866,6 +3113,14 @@ function lockApp() {
   const overlay = document.getElementById("securityLockOverlay");
   if (overlay) overlay.classList.add("active");
   updatePinDots();
+
+  // Preserve 3x4 numpad grid alignment
+  const bioBtn = document.getElementById("bioUnlockBtn");
+  if (bioBtn) {
+    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
+    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
+    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+  }
 
   if (State.security.bioEnabled && window.PublicKeyCredential) {
     setTimeout(triggerBiometricUnlock, 400);
@@ -2925,6 +3180,7 @@ async function verifyEnteredPin() {
   const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
 
   if (hash === State.security.pinHash) {
+    sessionStorage.setItem("tracker_pin_session", pin);
     const key = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
     await unlockApp(key);
   } else {
@@ -2946,13 +3202,21 @@ async function triggerBiometricUnlock() {
 
   try {
     const challenge = window.crypto.getRandomValues(new Uint8Array(32));
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        userVerification: "required",
-        timeout: 60000
-      }
-    });
+    const publicKeyReq = {
+      challenge,
+      userVerification: "required",
+      timeout: 60000
+    };
+    if (credId && credId !== "enrolled") {
+      try {
+        const rawIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
+        publicKeyReq.allowCredentials = [{
+          id: rawIdBytes,
+          type: "public-key"
+        }];
+      } catch (e) {}
+    }
+    const assertion = await navigator.credentials.get({ publicKey: publicKeyReq });
 
     if (assertion) {
       // Biometric verified! If a cached PIN is available in sessionStorage, derive key
@@ -2968,6 +3232,12 @@ async function triggerBiometricUnlock() {
     console.warn("Biometric authentication skipped or dismissed:", err);
   }
 }
+
+window.handleHeaderLockClick = handleHeaderLockClick;
+window.openPasscodeSetupModal = openPasscodeSetupModal;
+window.closePasscodeSetupModal = closePasscodeSetupModal;
+window.savePasscodeFromModal = savePasscodeFromModal;
+window.updateHeaderLockButton = updateHeaderLockButton;
 
 function initAutoLock() {
   ["mousemove", "keydown", "touchstart", "scroll", "click"].forEach(ev => {

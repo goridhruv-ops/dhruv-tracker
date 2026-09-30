@@ -122,6 +122,13 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  touch-action: pan-y !important;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
@@ -138,6 +145,7 @@ body {
   margin: 0 auto;
   padding: 0 1.5rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Header & Top Bar */
@@ -434,6 +442,11 @@ header.app-header {
 main.main-content {
   flex: 1;
   padding: 1.5rem 0;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  touch-action: pan-y !important;
+  box-sizing: border-box !important;
 }
 
 .tab-pane {
@@ -570,7 +583,12 @@ main.main-content {
 /* Data Tables */
 .table-responsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain !important;
+  touch-action: pan-x pan-y;
+  box-sizing: border-box;
 }
 
 table.data-table {
@@ -1438,15 +1456,87 @@ table.data-table tbody tr:last-child td {
 /* ==============================================================================
    PRIVACY BLUR MODE (COFFEE SHOP / PUBLIC TRANSIT MODE)
    ============================================================================== */
-[data-privacy="true"] .privacy-sensitive {
+.privacy-sensitive,
+.bank-balance-display,
+.metric-value,
+.card-number-val,
+.card-cvv-val,
+.card-pin-val,
+.card-limit-val,
+.person-card-balance,
+.emi-amount-badge {
+  transition: filter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-privacy="true"] .privacy-sensitive,
+[data-privacy="true"] .bank-balance-display,
+[data-privacy="true"] .metric-value,
+[data-privacy="true"] .card-number-val,
+[data-privacy="true"] .card-cvv-val,
+[data-privacy="true"] .card-pin-val,
+[data-privacy="true"] .card-limit-val,
+[data-privacy="true"] .card-stat-box .val,
+[data-privacy="true"] .card-stats-split strong,
+[data-privacy="true"] .stat-pill strong,
+[data-privacy="true"] .vault-card-data-field,
+[data-privacy="true"] .vault-field-val,
+[data-privacy="true"] .ledger-balance-tag,
+[data-privacy="true"] .person-card-balance,
+[data-privacy="true"] .person-balance-box span,
+[data-privacy="true"] .person-stat-line strong,
+[data-privacy="true"] .emi-amount-badge,
+[data-privacy="true"] table.data-table td:nth-child(2),
+[data-privacy="true"] table.data-table td:nth-child(3),
+[data-privacy="true"] table.data-table td:nth-child(4),
+[data-privacy="true"] table.data-table td:nth-child(5) {
   filter: blur(8px) !important;
   user-select: none !important;
-  transition: filter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: filter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 [data-privacy="true"] .privacy-sensitive:hover,
-[data-privacy="true"] .privacy-sensitive:active {
+[data-privacy="true"] .privacy-sensitive:active,
+[data-privacy="true"] .bank-balance-display:hover,
+[data-privacy="true"] .bank-balance-display:active,
+[data-privacy="true"] .metric-value:hover,
+[data-privacy="true"] .metric-value:active,
+[data-privacy="true"] .card-number-val:hover,
+[data-privacy="true"] .card-number-val:active,
+[data-privacy="true"] .card-cvv-val:hover,
+[data-privacy="true"] .card-cvv-val:active,
+[data-privacy="true"] .card-pin-val:hover,
+[data-privacy="true"] .card-pin-val:active,
+[data-privacy="true"] .card-limit-val:hover,
+[data-privacy="true"] .card-limit-val:active,
+[data-privacy="true"] .card-stat-box .val:hover,
+[data-privacy="true"] .card-stat-box .val:active,
+[data-privacy="true"] .card-stats-split strong:hover,
+[data-privacy="true"] .card-stats-split strong:active,
+[data-privacy="true"] .stat-pill strong:hover,
+[data-privacy="true"] .stat-pill strong:active,
+[data-privacy="true"] .vault-card-data-field:hover,
+[data-privacy="true"] .vault-card-data-field:active,
+[data-privacy="true"] .vault-field-val:hover,
+[data-privacy="true"] .vault-field-val:active,
+[data-privacy="true"] .ledger-balance-tag:hover,
+[data-privacy="true"] .ledger-balance-tag:active,
+[data-privacy="true"] .person-card-balance:hover,
+[data-privacy="true"] .person-card-balance:active,
+[data-privacy="true"] .person-balance-box span:hover,
+[data-privacy="true"] .person-balance-box span:active,
+[data-privacy="true"] .person-stat-line strong:hover,
+[data-privacy="true"] .person-stat-line strong:active,
+[data-privacy="true"] .emi-amount-badge:hover,
+[data-privacy="true"] .emi-amount-badge:active,
+[data-privacy="true"] table.data-table td:nth-child(2):hover,
+[data-privacy="true"] table.data-table td:nth-child(2):active,
+[data-privacy="true"] table.data-table td:nth-child(3):hover,
+[data-privacy="true"] table.data-table td:nth-child(3):active,
+[data-privacy="true"] table.data-table td:nth-child(4):hover,
+[data-privacy="true"] table.data-table td:nth-child(4):active,
+[data-privacy="true"] table.data-table td:nth-child(5):hover,
+[data-privacy="true"] table.data-table td:nth-child(5):active {
   filter: blur(0px) !important;
 }
 
@@ -1908,12 +1998,79 @@ table.data-table tbody tr:last-child td {
 }
 
 @media (max-width: 768px) {
+  /* Viewport lock & compact container */
+  .container {
+    padding: 0 0.85rem !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   /* Give main content clearance for fixed bottom dock */
   main.main-content {
     padding-bottom: 84px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
-  /* Simplify top header on mobile */
+  /* Header Optimization: Hide subtitle & sync badge to eliminate mobile wrap/wiggle */
+  .logo-subtitle {
+    display: none !important;
+  }
+
+  #syncStatusBadge {
+    display: none !important;
+  }
+
+  .header-content {
+    gap: 0.5rem !important;
+    padding: 0.15rem 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .logo-area {
+    gap: 0.5rem !important;
+  }
+
+  .logo-icon {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 1.1rem !important;
+  }
+
+  .logo-title {
+    font-size: 1rem !important;
+  }
+
+  /* Size header icon buttons to 34x34px */
+  .header-actions {
+    gap: 0.35rem !important;
+  }
+
+  .header-actions .btn-icon {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.9rem !important;
+    box-sizing: border-box !important;
+  }
+
+  .month-selector-wrapper select {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    max-width: 130px !important;
+  }
+
+  /* Simplify top header on mobile: hide desktop action buttons */
   .header-actions .desktop-btn {
     display: none !important;
   }
@@ -1930,6 +2087,9 @@ table.data-table tbody tr:last-child td {
     bottom: 0;
     left: 0;
     right: 0;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
     height: 64px;
     background: var(--bg-glass);
     backdrop-filter: blur(20px);
@@ -2019,16 +2179,97 @@ table.data-table tbody tr:last-child td {
     border: 2px solid var(--bg-secondary);
   }
 
-  /* Single Column Layouts on Mobile */
+  /* Full-width constraints & single column layouts on Mobile */
+  .tactile-card,
+  .card-deck-grid,
+  .bank-balances-banner,
+  .bank-card,
+  .metrics-grid,
+  .person-ledgers-grid,
+  .person-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
   .bank-balances-banner {
     grid-template-columns: 1fr !important;
   }
   .card-deck-grid {
     grid-template-columns: 1fr !important;
   }
+  .person-ledgers-grid {
+    grid-template-columns: 1fr !important;
+  }
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+  .metric-card {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .metric-value {
+    font-size: 1.25rem !important;
   }
 }
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.75rem !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .header-actions {
+    gap: 0.25rem !important;
+  }
+
+  .month-selector-wrapper select {
+    max-width: 110px !important;
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.4rem !important;
+  }
+
+  .tactile-card,
+  .card-deck-grid,
+  .bank-balances-banner,
+  .bank-card,
+  .metrics-grid,
+  .person-ledgers-grid,
+  .person-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .metric-card {
+    padding: 0.75rem 0.65rem !important;
+  }
+
+  .metric-value {
+    font-size: 1.1rem !important;
+  }
+
+  .metric-label {
+    font-size: 0.72rem !important;
+  }
+
+  .metric-sub {
+    font-size: 0.62rem !important;
+  }
+}
+
 
 

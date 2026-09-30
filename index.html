@@ -41,7 +41,7 @@
         <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
-        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID">🪪</button>
+        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID" style="visibility:hidden; pointer-events:none;">🪪</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
         <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
       </div>
@@ -100,6 +100,11 @@
           👁️
         </button>
 
+        <!-- Dedicated Lock App / Passcode Button -->
+        <button class="btn btn-icon" id="headerLockBtn" onclick="handleHeaderLockClick()" title="Lock Financial OS (Shift + L)">
+          🔒
+        </button>
+
         <!-- Supabase Settings Button -->
         <button class="btn btn-icon" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
           ⚙️
@@ -130,7 +135,7 @@
             <div class="bank-brand hdfc-color">
               <span>🏦</span> HDFC Bank Account
             </div>
-            <div class="bank-balance-display" id="displayHdfcBalance">₹0</div>
+            <div class="bank-balance-display privacy-sensitive" id="displayHdfcBalance">₹0</div>
             <div class="bank-sub-text">Primary Salary, Debits & Bills</div>
           </div>
           <div class="bank-actions">
@@ -149,7 +154,7 @@
             <div class="bank-brand kotak-color">
               <span>📈</span> Kotak Bank Account
             </div>
-            <div class="bank-balance-display" id="displayKotakBalance">₹0</div>
+            <div class="bank-balance-display privacy-sensitive" id="displayKotakBalance">₹0</div>
             <div class="bank-sub-text">Stock Investments & Liquidity</div>
           </div>
           <div class="bank-actions">
@@ -168,7 +173,7 @@
             <div class="bank-brand cash-color">
               <span>💵</span> Cash in Hand
             </div>
-            <div class="bank-balance-display" id="displayCashBalance">₹0</div>
+            <div class="bank-balance-display privacy-sensitive" id="displayCashBalance">₹0</div>
             <div class="bank-sub-text">Physical Wallet (Manual Tracking)</div>
           </div>
           <div class="bank-actions">
@@ -224,7 +229,7 @@
               <span class="metric-label">Total Income</span>
               <span class="metric-icon">💵</span>
             </div>
-            <div class="metric-value" id="metricIncome">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricIncome">₹0</div>
             <div class="metric-sub">Salary, Kotak & Reimbursed</div>
           </div>
 
@@ -233,7 +238,7 @@
               <span class="metric-label">Actual Living Spends</span>
               <span class="metric-icon">🛒</span>
             </div>
-            <div class="metric-value" id="metricExpense">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricExpense">₹0</div>
             <div class="metric-sub">Direct Outflows (Zero double-counting)</div>
           </div>
 
@@ -242,7 +247,7 @@
               <span class="metric-label">Net Leftover Balance</span>
               <span class="metric-icon">💎</span>
             </div>
-            <div class="metric-value" id="metricNet">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricNet">₹0</div>
             <div class="metric-sub">Income - Expenses - Debt - Savings</div>
           </div>
 
@@ -251,7 +256,7 @@
               <span class="metric-label">Savings & Investments</span>
               <span class="metric-icon">📈</span>
             </div>
-            <div class="metric-value" id="metricSavings">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricSavings">₹0</div>
             <div class="metric-sub">Emergency Fund, Stocks, MFs</div>
           </div>
 
@@ -260,7 +265,7 @@
               <span class="metric-label">Debt & EMIs Paid</span>
               <span class="metric-icon">💳</span>
             </div>
-            <div class="metric-value" id="metricDebt">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricDebt">₹0</div>
             <div class="metric-sub">iPhone 17 Pro, Watch EMI</div>
           </div>
 
@@ -269,7 +274,7 @@
               <span class="metric-label">Opening Rollover</span>
               <span class="metric-icon">🔄</span>
             </div>
-            <div class="metric-value" id="metricRollover">₹0</div>
+            <div class="metric-value privacy-sensitive" id="metricRollover">₹0</div>
             <div class="metric-sub">Brought forward in Oct</div>
           </div>
         </div>
@@ -1200,6 +1205,62 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeQuickLogModal()">Cancel</button>
         <button type="button" class="btn btn-primary" onclick="submitQuickLogTransaction()">✓ Save & Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PASSCODE SETUP & SECURITY ACTIVATION -->
+  <!-- ========================================== -->
+  <div id="passcodeSetupModal" class="modal-overlay" style="z-index: 10002;">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🔒 Set Up 4-Digit Passcode</h3>
+        <button class="modal-close" onclick="closePasscodeSetupModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem; line-height:1.45;">
+          Protect your bank accounts, credit card vault, and financial data with a master 4-digit PIN.
+        </p>
+
+        <!-- Passcode Input -->
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label" for="setupPinInput">Create 4-Digit Passcode *</label>
+          <input type="password" id="setupPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="••••" autocomplete="new-password" style="font-size:1.4rem; letter-spacing:0.5rem; text-align:center; font-weight:700;" required>
+        </div>
+
+        <!-- Confirm Passcode Input -->
+        <div class="form-group" style="margin-bottom:1.25rem;">
+          <label class="form-label" for="setupConfirmPinInput">Confirm 4-Digit Passcode *</label>
+          <input type="password" id="setupConfirmPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="••••" autocomplete="new-password" style="font-size:1.4rem; letter-spacing:0.5rem; text-align:center; font-weight:700;" required>
+        </div>
+
+        <!-- Biometric Toggle -->
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.875rem; font-weight:500;">
+            <input type="checkbox" id="setupBioAuthCheckbox" checked>
+            <span>Enable Face ID / Touch ID (Biometrics)</span>
+          </label>
+          <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-left:1.6rem; margin-top:0.25rem;">
+            Unlock quickly without typing your PIN every time on supported devices.
+          </small>
+        </div>
+
+        <!-- Auto-Lock Inactivity Timeout -->
+        <div class="form-group" style="margin-bottom:0.5rem;">
+          <label class="form-label" for="setupAutoLockSelect">Auto-Lock Inactivity Timeout</label>
+          <select id="setupAutoLockSelect" class="form-select">
+            <option value="60000">After 1 minute of inactivity</option>
+            <option value="180000" selected>After 3 minutes (Recommended)</option>
+            <option value="300000">After 5 minutes of inactivity</option>
+            <option value="immediate">Immediately on App Switch / Lock</option>
+            <option value="never">Never (Manual lock only)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closePasscodeSetupModal()">Maybe Later</button>
+        <button type="button" class="btn btn-primary" id="savePasscodeModalBtn" onclick="savePasscodeFromModal()">🔒 Save & Lock</button>
       </div>
     </div>
   </div>
