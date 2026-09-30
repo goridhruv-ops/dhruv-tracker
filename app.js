@@ -33,6 +33,20 @@ const State = {
   cardBills: JSON.parse(localStorage.getItem("tracker_card_bills") || "{}"),
   activeNotifFilter: "all",
   isSmartBannerDismissed: sessionStorage.getItem("tracker_banner_dismissed") === "true",
+  themeMode: localStorage.getItem("tracker_theme_mode") || "system", // 'system' | 'dark' | 'light'
+  security: {
+    pinEnabled: localStorage.getItem("tracker_pin_enabled") === "true",
+    pinHash: localStorage.getItem("tracker_pin_hash") || "",
+    pinSalt: localStorage.getItem("tracker_pin_salt") || "",
+    bioEnabled: localStorage.getItem("tracker_bio_enabled") === "true",
+    autoLockTimeout: localStorage.getItem("tracker_autolock_timeout") || "180000",
+    isLocked: false,
+    activePinBuffer: "",
+    inMemoryKey: null,
+    privacyMode: localStorage.getItem("tracker_privacy_mode") === "true"
+  },
+  cardVaultView: localStorage.getItem("tracker_card_vault_view") || "deck", // 'deck' | 'table'
+  decryptedVault: {}, // in-memory decrypted card credentials: { [cardName]: { cardNumber, expiry, cvv, pin, holderName, notes } }
   chatHistory: [
     { sender: "assistant", text: "👋 Hi Dhruv! Your Books of Accounts are configured for a fresh start from **1st October 2026**. Ask me about bank balances, tell me to log an expense, or transfer funds!" }
   ]
@@ -60,6 +74,8 @@ const MERCHANT_RULES = [
 // Initialize on DOM Ready
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initPrivacyMode();
+  initSecurity();
   initSupabase();
   loadData();
   setupEventListeners();
@@ -67,25 +83,77 @@ document.addEventListener("DOMContentLoaded", () => {
   renderApp();
 });
 
-// Theme Management
+// Adaptive System & Manual Theme Engine
 function initTheme() {
-  const savedTheme = localStorage.getItem("tracker_theme") || "dark";
-  document.documentElement.setAttribute("data-theme", savedTheme);
-  updateThemeIcon(savedTheme);
+  const savedMode = State.themeMode;
+  applyTheme(savedMode);
+
+  // Dynamically listen to device OS theme changes
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (State.themeMode === "system") {
+        applyTheme("system");
+      }
+    });
+  }
 }
 
-function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme") || "light";
-  const next = current === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  localStorage.setItem("tracker_theme", next);
-  updateThemeIcon(next);
-  renderCharts();
+function cycleTheme() {
+  const current = State.themeMode;
+  let next = "dark";
+  if (current === "system") next = "dark";
+  else if (current === "dark") next = "light";
+  else next = "system";
+
+  State.themeMode = next;
+  localStorage.setItem("tracker_theme_mode", next);
+  applyTheme(next);
+  showToast(`Theme: ${next === "system" ? "Auto (Device Mode) 💻" : next === "dark" ? "Dark Mode 🌙" : "Light Mode ☀️"}`);
 }
 
-function updateThemeIcon(theme) {
+function applyTheme(mode) {
+  let effective = mode;
+  if (mode === "system") {
+    effective = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  document.documentElement.setAttribute("data-theme", effective);
+  updateThemeIcon(mode, effective);
+  if (typeof renderCharts === "function") renderCharts();
+}
+
+function updateThemeIcon(mode) {
   const btn = document.getElementById("themeToggleBtn");
-  if (btn) btn.innerHTML = theme === "dark" ? "☀️" : "🌙";
+  if (!btn) return;
+  if (mode === "system") btn.innerHTML = "💻";
+  else if (mode === "dark") btn.innerHTML = "🌙";
+  else btn.innerHTML = "☀️";
+}
+
+// Privacy Blur Engine ("Coffee Shop Mode")
+function initPrivacyMode() {
+  if (State.security.privacyMode) {
+    document.documentElement.setAttribute("data-privacy", "true");
+    const btn = document.getElementById("privacyToggleBtn");
+    if (btn) btn.innerHTML = "🕶️";
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.shiftKey && (e.key === "P" || e.key === "p")) {
+      e.preventDefault();
+      togglePrivacyMode();
+    }
+  });
+}
+
+function togglePrivacyMode() {
+  const current = document.documentElement.getAttribute("data-privacy") === "true";
+  const next = !current;
+  document.documentElement.setAttribute("data-privacy", next ? "true" : "false");
+  State.security.privacyMode = next;
+  localStorage.setItem("tracker_privacy_mode", next ? "true" : "false");
+  const btn = document.getElementById("privacyToggleBtn");
+  if (btn) btn.innerHTML = next ? "🕶️" : "👁️";
+  showToast(next ? "Privacy Blur Activated (Public Mode)" : "Privacy Blur Disabled");
 }
 
 // Supabase Initialization
@@ -146,7 +214,16 @@ async function loadData() {
 
   // Load Categories, Accounts, EMIs, and Budgets
   State.categories = window.INITIAL_DATA ? [...window.INITIAL_DATA.categories] : [];
-  State.accounts = window.INITIAL_DATA ? JSON.parse(JSON.stringify(window.INITIAL_DATA.accounts)) : [];
+  const savedCustomAccounts = localStorage.getItem("tracker_accounts_custom");
+  if (savedCustomAccounts) {
+    try {
+      State.accounts = JSON.parse(savedCustomAccounts);
+    } catch(e) {
+      State.accounts = window.INITIAL_DATA ? JSON.parse(JSON.stringify(window.INITIAL_DATA.accounts)) : [];
+    }
+  } else {
+    State.accounts = window.INITIAL_DATA ? JSON.parse(JSON.stringify(window.INITIAL_DATA.accounts)) : [];
+  }
   State.emiSchedule = window.INITIAL_DATA ? JSON.parse(JSON.stringify(window.INITIAL_DATA.emiSchedule)) : [];
   State.defaultBudgets = window.INITIAL_DATA ? [...window.INITIAL_DATA.defaultBudgets] : [];
   State.rollovers = window.INITIAL_DATA ? { ...window.INITIAL_DATA.rollovers } : {};
@@ -718,12 +795,12 @@ function renderEmiSchedule() {
   `).join("");
 }
 
-// Credit Card Tracker
+// Unified Card Vault & Credit Card Tracker
 function renderCreditCardTracker() {
+  const deckContainer = document.getElementById("cardVaultDeckContainer");
   const tbody = document.getElementById("creditCardTrackerBody");
-  if (!tbody) return;
-
-  const cards = State.accounts.filter(a => a.type === "Credit Card");
+  
+  const cards = State.accounts.filter(a => a.type === "Credit Card" && a.is_active !== false);
   const txs = getFilteredTransactions();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -733,9 +810,9 @@ function renderCreditCardTracker() {
   let totalPaid = 0;
   let totalClosing = 0;
 
-  const rows = cards.map(c => {
-    totalLimit += c.credit_limit || 0;
-    
+  const deckHtml = cards.map(c => {
+    totalLimit += (c.credit_limit || 0);
+
     const spends = txs
       .filter(t => t.account === c.name && t.transaction_type === "Expense")
       .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
@@ -766,66 +843,188 @@ function renderCreditCardTracker() {
 
     let dueBadgeHtml = "";
     if (isPaid) {
-      dueBadgeHtml = `<span class="due-status-pill status-success">✓ Paid</span>`;
+      dueBadgeHtml = `<span class="due-status-pill status-success">✓ Bill Paid</span>`;
     } else if (diffDays < 0) {
       dueBadgeHtml = `<span class="due-status-pill status-danger">🚨 Overdue (${Math.abs(diffDays)}d)</span>`;
     } else if (diffDays <= 3) {
-      dueBadgeHtml = `<span class="due-status-pill status-danger">⚠️ ${diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : 'In ' + diffDays + 'd'}</span>`;
+      dueBadgeHtml = `<span class="due-status-pill status-danger">⚠️ ${diffDays === 0 ? 'Due Today' : diffDays === 1 ? 'Due Tomorrow' : 'Due in ' + diffDays + 'd'}</span>`;
     } else if (diffDays <= 7) {
-      dueBadgeHtml = `<span class="due-status-pill status-warning">In ${diffDays} days</span>`;
+      dueBadgeHtml = `<span class="due-status-pill status-warning">Due in ${diffDays} days</span>`;
     } else {
-      dueBadgeHtml = `<span class="due-status-pill status-info">${diffDays}d left</span>`;
+      dueBadgeHtml = `<span class="due-status-pill status-info">Due in ${diffDays}d</span>`;
     }
 
+    // Vault credentials for this card
+    const vault = State.decryptedVault[c.name] || {};
+    const hasNum = Boolean(vault.cardNumber && vault.cardNumber.length >= 4);
+    const maskedNum = hasNum 
+      ? vault.cardNumber.replace(/(\d{4})(\d{4})?(\d{4})?(\d{4})?/, (_, a, b, c, d) => `${a} •••• •••• ${d || c || b}`)
+      : (c.last4 && c.last4 !== "••••") ? `•••• •••• •••• ${c.last4}` : "•••• •••• •••• ••••";
+    
+    const expiry = vault.expiry || "••/••";
+    const cvv = vault.cvv || "•••";
+    const pin = vault.pin || "••••";
+    const themeClass = c.theme_class || getCardDefaultTheme(c.name);
+    const network = c.network || (c.name.includes("American") ? "Amex" : c.name.includes("Roar") ? "RuPay" : "Visa");
+    const safeCardId = encodeURIComponent(c.name).replace(/[^a-zA-Z0-9]/g, "_");
+
     return `
-      <tr>
-        <td><strong>${c.name}</strong></td>
-        <td>₹${(c.credit_limit || 0).toLocaleString("en-IN")}</td>
-        <td>₹${Math.round(spends).toLocaleString("en-IN")}</td>
-        <td>₹${Math.round(paid).toLocaleString("en-IN")}</td>
-        <td style="font-weight: 700; color: ${closing > 0 ? 'var(--expense)' : 'var(--income)'}">
-          ₹${Math.round(closing).toLocaleString("en-IN")}
-        </td>
-        <td>
-          <div style="font-weight:600; font-size:0.85rem;">${formatPrettyDate(dueDateStr)}</div>
-          <div style="margin-top:0.25rem;">${dueBadgeHtml}</div>
-        </td>
-        <td>₹${Math.round(available).toLocaleString("en-IN")}</td>
-        <td>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill ${utilPct > 70 ? 'fill-danger' : utilPct > 30 ? 'fill-warning' : 'fill-safe'}" style="width: ${Math.min(100, utilPct)}%"></div>
+      <div class="tactile-card ${themeClass}">
+        <div class="card-gloss-overlay"></div>
+        
+        <!-- Top Row -->
+        <div class="card-top-row">
+          <div class="card-bank-info">
+            <span class="card-bank-name">${c.name}</span>
+            <span class="card-type-tag">Cycle: ${c.billing_cycle_day || 1}st of month</span>
           </div>
-          <span style="font-size: 0.7rem; color: var(--text-muted);">${utilPct}% limit</span>
-        </td>
-        <td>
-          <div style="display:flex; align-items:center; gap:0.35rem;">
-            <button class="btn btn-primary" style="font-size:0.75rem; padding:0.25rem 0.6rem;" onclick="openPayCardBillModal('${c.name}', ${Math.round(closing)})" title="Pay this card bill">
-              💳 Pay
+          <div class="card-network-logo">${network}</div>
+        </div>
+
+        <!-- EMV Chip -->
+        <div class="card-chip"></div>
+
+        <!-- 16-Digit Card Number Box -->
+        <div class="card-number-box">
+          <span class="card-number-val" id="cardNumVal_${safeCardId}">${maskedNum}</span>
+          <div style="display:flex; gap:0.25rem;">
+            ${hasNum ? `<button type="button" class="card-btn-inline" onclick="toggleCardNumberVisibility('${safeCardId}', '${vault.cardNumber}')" title="Show / Hide Number">👁️</button>` : ''}
+            <button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.cardNumber || ''}', 'Card Number')" title="Copy 16-digit Number">📋</button>
+          </div>
+        </div>
+
+        <!-- Sensitive Vault Row: Expiry, CVV, PIN -->
+        <div class="card-vault-meta-row">
+          <div class="vault-field-group">
+            <span class="vault-field-label">Expires</span>
+            <div class="vault-field-val-wrap">
+              <span class="vault-field-val">${expiry}</span>
+              ${vault.expiry ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.expiry}', 'Expiry Date')">📋</button>` : ''}
+            </div>
+          </div>
+          <div class="vault-field-group">
+            <span class="vault-field-label">CVV</span>
+            <div class="vault-field-val-wrap">
+              <span class="vault-field-val" id="cvvVal_${safeCardId}">•••</span>
+              ${vault.cvv ? `<button type="button" class="card-btn-inline" onclick="toggleCvvVisibility('${safeCardId}', '${vault.cvv}')">👁️</button>` : ''}
+              ${vault.cvv ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.cvv}', 'CVV')">📋</button>` : ''}
+            </div>
+          </div>
+          <div class="vault-field-group">
+            <span class="vault-field-label">ATM PIN</span>
+            <div class="vault-field-val-wrap">
+              <span class="vault-field-val" id="pinVal_${safeCardId}">••••</span>
+              ${vault.pin ? `<button type="button" class="card-btn-inline" onclick="togglePinVisibility('${safeCardId}', '${vault.pin}')">👁️</button>` : ''}
+              ${vault.pin ? `<button type="button" class="card-btn-inline" onclick="copyCardValue('${vault.pin}', 'Card PIN')">📋</button>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <!-- Limits & Due Date Tray -->
+        <div class="card-status-tray">
+          <div class="card-stats-split">
+            <span style="opacity:0.85;">Used: <strong class="privacy-sensitive">₹${Math.round(closing).toLocaleString("en-IN")}</strong></span>
+            <span>Available: <strong class="privacy-sensitive">₹${Math.round(available).toLocaleString("en-IN")}</strong></span>
+          </div>
+
+          <div class="card-limit-bar-bg">
+            <div class="card-limit-bar-fill" style="width: ${Math.min(100, utilPct)}%; background: ${utilPct > 70 ? 'var(--expense)' : utilPct > 30 ? 'var(--warning)' : '#10b981'};"></div>
+          </div>
+
+          <div class="card-stats-split" style="margin-bottom:0.65rem;">
+            <span>${dueBadgeHtml}</span>
+            <span style="font-size:0.75rem; opacity:0.85;">Limit: ₹${(c.credit_limit || 0).toLocaleString("en-IN")}</span>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card-card-actions">
+            <button type="button" class="btn-card-action primary-pay" onclick="openPayCardBillModal('${c.name}', ${Math.round(closing)})">
+              💳 Pay Bill
             </button>
-            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem;" onclick="openCardDueDateModal('${c.name}')" title="Edit Due Date">
-              ✏️
+            <button type="button" class="btn-card-action" onclick="openEditCardModal('${c.name}')">
+              ✏️ Vault / Edit
             </button>
           </div>
-        </td>
-      </tr>
+        </div>
+      </div>
     `;
   });
 
-  rows.push(`
-    <tr style="font-weight: 800; background: var(--bg-tertiary);">
-      <td>TOTAL CREDIT CARDS</td>
-      <td>₹${totalLimit.toLocaleString("en-IN")}</td>
-      <td>₹${Math.round(totalSpend).toLocaleString("en-IN")}</td>
-      <td>₹${Math.round(totalPaid).toLocaleString("en-IN")}</td>
-      <td style="color: var(--expense)">₹${Math.round(totalClosing).toLocaleString("en-IN")}</td>
-      <td>-</td>
-      <td>₹${Math.round(totalLimit - totalClosing).toLocaleString("en-IN")}</td>
-      <td>${totalLimit > 0 ? Math.round((totalClosing / totalLimit) * 100) : 0}% aggregate</td>
-      <td>-</td>
-    </tr>
-  `);
+  if (deckContainer) {
+    if (deckHtml.length === 0) {
+      deckContainer.innerHTML = `
+        <div style="grid-column: 1/-1; text-align:center; padding:3rem; background:var(--bg-secondary); border-radius:var(--radius-lg); border:1px dashed var(--border-color);">
+          <div style="font-size:2.5rem; margin-bottom:0.75rem;">💳</div>
+          <h3>No Cards in Vault Yet</h3>
+          <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;">
+            Click "+ Add New Card" above to register and secure your credit/debit cards.
+          </p>
+        </div>
+      `;
+    } else {
+      deckContainer.innerHTML = deckHtml.join("");
+    }
+  }
 
-  tbody.innerHTML = rows.join("");
+  // Also populate compact table rows
+  if (tbody) {
+    const tableRows = cards.map(c => {
+      const spends = txs
+        .filter(t => t.account === c.name && t.transaction_type === "Expense")
+        .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+      const paid = txs
+        .filter(t => t.category && t.category.toLowerCase().includes(c.name.toLowerCase().replace("credit card", "").trim()) && (t.transaction_type === "Transfer" || t.transaction_type === "Expense"))
+        .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+      const opening = c.opening_balance || 0;
+      const closing = Math.max(0, opening + spends - paid);
+      const available = Math.max(0, (c.credit_limit || 0) - closing);
+      const utilPct = c.credit_limit > 0 ? Math.round((closing / c.credit_limit) * 100) : 0;
+
+      let dueDateStr = c.payment_due_date;
+      if (!dueDateStr) {
+        const activeYearMonth = State.activeMonth === "all" ? "2026-10" : State.activeMonth;
+        const dayStr = ("0" + (c.payment_due_day || 15)).slice(-2);
+        dueDateStr = `${activeYearMonth}-${dayStr}`;
+      }
+
+      return `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>₹${(c.credit_limit || 0).toLocaleString("en-IN")}</td>
+          <td>₹${Math.round(spends).toLocaleString("en-IN")}</td>
+          <td>₹${Math.round(paid).toLocaleString("en-IN")}</td>
+          <td style="font-weight: 700; color: ${closing > 0 ? 'var(--expense)' : 'var(--income)'}">
+            ₹${Math.round(closing).toLocaleString("en-IN")}
+          </td>
+          <td>${formatPrettyDate(dueDateStr)}</td>
+          <td>₹${Math.round(available).toLocaleString("en-IN")}</td>
+          <td>${utilPct}% limit</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.35rem;">
+              <button class="btn btn-primary" style="font-size:0.75rem; padding:0.25rem 0.6rem;" onclick="openPayCardBillModal('${c.name}', ${Math.round(closing)})">💳 Pay</button>
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem;" onclick="openEditCardModal('${c.name}')">✏️</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    tableRows.push(`
+      <tr style="font-weight: 800; background: var(--bg-tertiary);">
+        <td>TOTAL CREDIT CARDS</td>
+        <td>₹${totalLimit.toLocaleString("en-IN")}</td>
+        <td>₹${Math.round(totalSpend).toLocaleString("en-IN")}</td>
+        <td>₹${Math.round(totalPaid).toLocaleString("en-IN")}</td>
+        <td style="color: var(--expense)">₹${Math.round(totalClosing).toLocaleString("en-IN")}</td>
+        <td>-</td>
+        <td>₹${Math.round(totalLimit - totalClosing).toLocaleString("en-IN")}</td>
+        <td>${totalLimit > 0 ? Math.round((totalClosing / totalLimit) * 100) : 0}% aggregate</td>
+        <td>-</td>
+      </tr>
+    `);
+
+    tbody.innerHTML = tableRows.join("");
+  }
 }
 
 // Transactions Table
@@ -1742,7 +1941,32 @@ function openSettingsModal() {
   document.getElementById("sbUrlInput").value = State.supabaseConfig.url;
   document.getElementById("sbKeyInput").value = State.supabaseConfig.key;
   document.getElementById("geminiKeyInput").value = State.geminiApiKey;
+  
+  // Security & Passcode fields
+  const pinCheck = document.getElementById("securityPinEnabledCheckbox");
+  if (pinCheck) pinCheck.checked = State.security.pinEnabled;
+  
+  const pinSec = document.getElementById("pinConfigSection");
+  if (pinSec) pinSec.style.display = State.security.pinEnabled ? "block" : "none";
+
+  const pinInput = document.getElementById("masterPinInput");
+  if (pinInput) pinInput.value = State.security.pinHash ? "••••" : "";
+
+  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
+  if (bioCheck) bioCheck.checked = State.security.bioEnabled;
+
+  const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
+  if (autoLockSelect) autoLockSelect.value = State.security.autoLockTimeout;
+
   document.getElementById("settingsModal").classList.add("active");
+}
+
+function togglePinSecurityOption() {
+  const pinCheck = document.getElementById("securityPinEnabledCheckbox");
+  const pinSec = document.getElementById("pinConfigSection");
+  if (pinSec && pinCheck) {
+    pinSec.style.display = pinCheck.checked ? "block" : "none";
+  }
 }
 
 function closeSettingsModal() {
@@ -1762,12 +1986,59 @@ async function saveSupabaseSettings() {
   localStorage.setItem("tracker_sb_key", key);
   localStorage.setItem("tracker_gemini_key", gKey);
 
+  // Handle Security & PIN Settings
+  const pinCheck = document.getElementById("securityPinEnabledCheckbox");
+  const pinInput = document.getElementById("masterPinInput");
+  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
+  const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
+
+  if (pinCheck && pinCheck.checked) {
+    const enteredPin = pinInput ? pinInput.value.trim() : "";
+    if (enteredPin && enteredPin !== "••••") {
+      if (enteredPin.length !== 4 || !/^\d{4}$/.test(enteredPin)) {
+        showToast("Passcode must be exactly 4 digits!", "warning");
+        return;
+      }
+      const salt = VaultCrypto.generateSalt();
+      const hash = await VaultCrypto.hashPin(enteredPin, salt);
+      State.security.pinEnabled = true;
+      State.security.pinHash = hash;
+      State.security.pinSalt = salt;
+      localStorage.setItem("tracker_pin_enabled", "true");
+      localStorage.setItem("tracker_pin_hash", hash);
+      localStorage.setItem("tracker_pin_salt", salt);
+
+      // Derive AES key for in-memory encryption
+      const derivedKey = await VaultCrypto.deriveAesKey(enteredPin, salt);
+      State.security.inMemoryKey = derivedKey;
+    } else if (!State.security.pinHash) {
+      showToast("Please enter a 4-digit Passcode!", "warning");
+      return;
+    } else {
+      State.security.pinEnabled = true;
+      localStorage.setItem("tracker_pin_enabled", "true");
+    }
+
+    if (bioCheck) {
+      State.security.bioEnabled = bioCheck.checked;
+      localStorage.setItem("tracker_bio_enabled", bioCheck.checked ? "true" : "false");
+    }
+
+    if (autoLockSelect) {
+      State.security.autoLockTimeout = autoLockSelect.value;
+      localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
+    }
+  } else {
+    State.security.pinEnabled = false;
+    localStorage.setItem("tracker_pin_enabled", "false");
+  }
+
   if (initSupabase()) {
-    showToast("Supabase connected successfully!", "success");
+    showToast("Settings & Security configurations saved!", "success");
     await loadData();
     renderApp();
   } else {
-    showToast("Saved local settings.", "info");
+    showToast("Settings & Security configurations saved locally.", "success");
   }
 
   closeSettingsModal();
@@ -2447,4 +2718,646 @@ async function applyParsedCardStatement(cardName, amount, dueDate) {
   document.getElementById("smartParserInput").value = "";
   document.getElementById("parserResultPreview").style.display = "none";
   renderApp();
+}
+
+// ==============================================================================
+// VAULT CRYPTOGRAPHY (ZERO-KNOWLEDGE CLIENT-SIDE AES-256 GCM + PBKDF2)
+// ==============================================================================
+const VaultCrypto = {
+  buf2hex(buf) {
+    return Array.from(new Uint8Array(buf))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+  },
+
+  hex2buf(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes.buffer;
+  },
+
+  generateSalt() {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    return this.buf2hex(salt);
+  },
+
+  async hashPin(pin, saltHex) {
+    const enc = new TextEncoder();
+    const salt = this.hex2buf(saltHex);
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw",
+      enc.encode(pin),
+      "PBKDF2",
+      false,
+      ["deriveBits"]
+    );
+    const derivedBits = await window.crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: 100000,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      256
+    );
+    return this.buf2hex(derivedBits);
+  },
+
+  async deriveAesKey(pin, saltHex) {
+    const enc = new TextEncoder();
+    const salt = this.hex2buf(saltHex);
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw",
+      enc.encode(pin),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+    return await window.crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: 100000,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  },
+
+  async encryptObject(obj, cryptoKey) {
+    if (!cryptoKey) return null;
+    try {
+      const enc = new TextEncoder();
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encodedData = enc.encode(JSON.stringify(obj));
+      const encryptedBuf = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        cryptoKey,
+        encodedData
+      );
+      return {
+        iv: this.buf2hex(iv),
+        data: this.buf2hex(encryptedBuf)
+      };
+    } catch (e) {
+      console.warn("Vault encryption error:", e);
+      return null;
+    }
+  },
+
+  async decryptObject(encryptedPayload, cryptoKey) {
+    if (!cryptoKey || !encryptedPayload || !encryptedPayload.iv || !encryptedPayload.data) return null;
+    try {
+      const iv = this.hex2buf(encryptedPayload.iv);
+      const data = this.hex2buf(encryptedPayload.data);
+      const decryptedBuf = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        cryptoKey,
+        data
+      );
+      const dec = new TextDecoder();
+      return JSON.parse(dec.decode(decryptedBuf));
+    } catch (e) {
+      console.warn("Vault decryption error:", e);
+      return null;
+    }
+  }
+};
+
+// ==============================================================================
+// DUAL-TIER APP SECURITY & LOCK ENGINE
+// ==============================================================================
+let idleTimer = null;
+
+function initSecurity() {
+  State.security.pinEnabled = localStorage.getItem("tracker_pin_enabled") === "true";
+  State.security.pinHash = localStorage.getItem("tracker_pin_hash") || "";
+  State.security.pinSalt = localStorage.getItem("tracker_pin_salt") || "";
+  State.security.bioEnabled = localStorage.getItem("tracker_bio_enabled") === "true";
+  State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
+
+  // Hide biometric button if not supported or not enrolled
+  const bioBtn = document.getElementById("bioUnlockBtn");
+  if (bioBtn) {
+    bioBtn.style.display = (window.PublicKeyCredential && State.security.bioEnabled) ? "flex" : "none";
+  }
+
+  // Lock on startup if PIN protection is active
+  if (State.security.pinEnabled && State.security.pinHash) {
+    lockApp();
+  }
+
+  initAutoLock();
+}
+
+function lockApp() {
+  if (!State.security.pinEnabled || !State.security.pinHash) return;
+  State.security.isLocked = true;
+  State.security.inMemoryKey = null;
+  State.security.activePinBuffer = "";
+  State.decryptedVault = {}; // Wipe decrypted credentials from RAM!
+
+  const overlay = document.getElementById("securityLockOverlay");
+  if (overlay) overlay.classList.add("active");
+  updatePinDots();
+
+  if (State.security.bioEnabled && window.PublicKeyCredential) {
+    setTimeout(triggerBiometricUnlock, 400);
+  }
+}
+
+async function unlockApp(derivedKey) {
+  State.security.isLocked = false;
+  State.security.inMemoryKey = derivedKey;
+  State.security.activePinBuffer = "";
+
+  const overlay = document.getElementById("securityLockOverlay");
+  if (overlay) overlay.classList.remove("active");
+
+  // Decrypt all card credentials using in-memory key
+  await decryptAllCardVaults();
+
+  showToast("Vault Unlocked! Welcome Dhruv 👋", "success");
+  renderApp();
+  resetIdleTimer();
+}
+
+function enterPinDigit(digit) {
+  if (!State.security.isLocked) return;
+  if (State.security.activePinBuffer.length < 4) {
+    State.security.activePinBuffer += digit;
+    updatePinDots();
+
+    if (State.security.activePinBuffer.length === 4) {
+      setTimeout(verifyEnteredPin, 100);
+    }
+  }
+}
+
+function deletePinDigit() {
+  if (!State.security.isLocked) return;
+  if (State.security.activePinBuffer.length > 0) {
+    State.security.activePinBuffer = State.security.activePinBuffer.slice(0, -1);
+    updatePinDots();
+  }
+}
+
+function updatePinDots() {
+  const dots = document.querySelectorAll("#pinDotsContainer .pin-dot");
+  dots.forEach((dot, idx) => {
+    if (idx < State.security.activePinBuffer.length) {
+      dot.classList.add("filled");
+    } else {
+      dot.classList.remove("filled");
+      dot.classList.remove("error");
+    }
+  });
+}
+
+async function verifyEnteredPin() {
+  const pin = State.security.activePinBuffer;
+  const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
+
+  if (hash === State.security.pinHash) {
+    const key = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
+    await unlockApp(key);
+  } else {
+    const dots = document.querySelectorAll("#pinDotsContainer .pin-dot");
+    dots.forEach(d => d.classList.add("error"));
+    showToast("Incorrect Passcode. Try again!", "error");
+
+    setTimeout(() => {
+      State.security.activePinBuffer = "";
+      updatePinDots();
+    }, 600);
+  }
+}
+
+async function triggerBiometricUnlock() {
+  if (!window.PublicKeyCredential || !State.security.bioEnabled) return;
+  const credId = localStorage.getItem("tracker_bio_cred_id");
+  if (!credId) return;
+
+  try {
+    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        userVerification: "required",
+        timeout: 60000
+      }
+    });
+
+    if (assertion) {
+      // Biometric verified! If a cached PIN is available in sessionStorage, derive key
+      const cachedPin = sessionStorage.getItem("tracker_pin_session");
+      if (cachedPin && State.security.pinSalt) {
+        const key = await VaultCrypto.deriveAesKey(cachedPin, State.security.pinSalt);
+        await unlockApp(key);
+      } else {
+        await unlockApp(null);
+      }
+    }
+  } catch (err) {
+    console.warn("Biometric authentication skipped or dismissed:", err);
+  }
+}
+
+function initAutoLock() {
+  ["mousemove", "keydown", "touchstart", "scroll", "click"].forEach(ev => {
+    window.addEventListener(ev, resetIdleTimer, { passive: true });
+  });
+
+  // Lock immediately on tab switch / phone lock
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && State.security.pinEnabled) {
+      if (State.security.autoLockTimeout === "immediate" || State.security.autoLockTimeout !== "never") {
+        lockApp();
+      }
+    }
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (State.security.pinEnabled) lockApp();
+  });
+
+  resetIdleTimer();
+}
+
+function resetIdleTimer() {
+  if (State.security.isLocked || !State.security.pinEnabled || State.security.autoLockTimeout === "never") return;
+  clearTimeout(idleTimer);
+  const ms = parseInt(State.security.autoLockTimeout) || 180000;
+  idleTimer = setTimeout(() => {
+    if (!State.security.isLocked && State.security.pinEnabled) {
+      lockApp();
+      showToast("App locked due to inactivity.", "info");
+    }
+  }, ms);
+}
+
+async function decryptAllCardVaults() {
+  if (!State.security.inMemoryKey) return;
+  const allVaults = JSON.parse(localStorage.getItem("tracker_card_vaults_enc") || "{}");
+  for (const cardName in allVaults) {
+    const dec = await VaultCrypto.decryptObject(allVaults[cardName], State.security.inMemoryKey);
+    if (dec) {
+      State.decryptedVault[cardName] = dec;
+    }
+  }
+}
+
+// ==============================================================================
+// TIER-1 PRIVACY-SAFE QUICK LOG
+// ==============================================================================
+function openQuickLogModal() {
+  const accSelect = document.getElementById("quickLogAccountSelect");
+  if (accSelect) {
+    accSelect.innerHTML = State.accounts
+      .filter(a => a.is_active !== false)
+      .map(a => `<option value="${a.name}">${a.name}</option>`)
+      .join("");
+  }
+
+  const catSelect = document.getElementById("quickLogCategorySelect");
+  if (catSelect) {
+    const expenseCats = State.categories.filter(c => c.type === "Expense" || c.type === "Debt");
+    catSelect.innerHTML = expenseCats
+      .map(c => `<option value="${c.name}">${c.name}</option>`)
+      .join("");
+  }
+
+  document.getElementById("quickLogAmountInput").value = "";
+  document.getElementById("quickLogDescInput").value = "";
+
+  document.getElementById("quickLogModal").classList.add("active");
+  setTimeout(() => {
+    document.getElementById("quickLogAmountInput")?.focus();
+  }, 100);
+}
+
+function closeQuickLogModal() {
+  document.getElementById("quickLogModal").classList.remove("active");
+}
+
+async function submitQuickLogTransaction() {
+  const amt = parseFloat(document.getElementById("quickLogAmountInput").value);
+  if (!amt || amt <= 0) {
+    showToast("Please enter a valid amount!", "warning");
+    return;
+  }
+
+  const account = document.getElementById("quickLogAccountSelect").value;
+  const category = document.getElementById("quickLogCategorySelect").value;
+  const desc = document.getElementById("quickLogDescInput").value.trim() || `${category} (Quick Log)`;
+
+  const tx = {
+    id: "tx_" + Date.now(),
+    date: new Date().toISOString().split("T")[0],
+    transaction_type: "Expense",
+    category: category,
+    amount: amt,
+    description: desc,
+    account: account,
+    status: "approved",
+    source: "manual",
+    created_at: new Date().toISOString()
+  };
+
+  State.transactions.unshift(tx);
+  saveLocalTransactions(State.transactions);
+
+  if (State.supabase) {
+    try {
+      await State.supabase.from("transactions").insert(tx);
+    } catch (e) {
+      console.warn("Supabase quick log sync warning:", e);
+    }
+  }
+
+  closeQuickLogModal();
+  showToast(`⚡ Saved ₹${amt.toLocaleString("en-IN")} via ${account}! Vault remains securely locked.`, "success");
+}
+
+// ==============================================================================
+// UNIFIED CARD VAULT CRUD & MANAGEMENT
+// ==============================================================================
+function getCardDefaultTheme(cardName) {
+  const n = (cardName || "").toLowerCase();
+  if (n.includes("amex") || n.includes("american")) return "card-theme-amex";
+  if (n.includes("coral")) return "card-theme-icici-coral";
+  if (n.includes("amazon")) return "card-theme-icici-amazon";
+  if (n.includes("roar") || n.includes("rupay")) return "card-theme-roar";
+  if (n.includes("hdfc")) return "card-theme-hdfc";
+  if (n.includes("kotak")) return "card-theme-kotak";
+  return "card-theme-default";
+}
+
+function toggleCardVaultViewMode() {
+  const tableWrapper = document.getElementById("creditCardTableWrapper");
+  const deckContainer = document.getElementById("cardVaultDeckContainer");
+  const btn = document.getElementById("cardViewToggleBtn");
+
+  const isTable = tableWrapper.style.display !== "none";
+  if (isTable) {
+    tableWrapper.style.display = "none";
+    deckContainer.style.display = "grid";
+    btn.innerHTML = "📋 Table View";
+  } else {
+    tableWrapper.style.display = "block";
+    deckContainer.style.display = "none";
+    btn.innerHTML = "💳 Cards View";
+  }
+}
+
+function openAddCardModal() {
+  document.getElementById("manageCardModalTitle").textContent = "➕ Add New Credit / Debit Card";
+  document.getElementById("manageCardOriginalName").value = "";
+  document.getElementById("cardNameInput").value = "";
+  document.getElementById("cardBankSelect").value = "HDFC Bank";
+  document.getElementById("cardNetworkSelect").value = "RuPay";
+  document.getElementById("cardCreditLimitInput").value = "100000";
+  document.getElementById("cardBillingCycleDayInput").value = "16";
+  document.getElementById("cardDueDayInput").value = "5";
+  document.getElementById("cardThemeSelect").value = "card-theme-default";
+  document.getElementById("cardPerksInput").value = "";
+
+  document.getElementById("vaultHolderNameInput").value = "DHRUV GORI";
+  document.getElementById("vaultCardNumberInput").value = "";
+  document.getElementById("vaultExpiryInput").value = "";
+  document.getElementById("vaultCvvInput").value = "";
+  document.getElementById("vaultPinInput").value = "";
+  document.getElementById("vaultNotesInput").value = "";
+
+  document.getElementById("btnDeleteCard").style.display = "none";
+  document.getElementById("manageCardModal").classList.add("active");
+}
+
+function openEditCardModal(cardName) {
+  const card = State.accounts.find(a => a.name === cardName);
+  if (!card) return;
+
+  document.getElementById("manageCardModalTitle").textContent = `✏️ Edit ${card.name}`;
+  document.getElementById("manageCardOriginalName").value = card.name;
+  document.getElementById("cardNameInput").value = card.name;
+  document.getElementById("cardBankSelect").value = card.bank || "HDFC Bank";
+  document.getElementById("cardNetworkSelect").value = card.network || "RuPay";
+  document.getElementById("cardCreditLimitInput").value = card.credit_limit || 0;
+  document.getElementById("cardBillingCycleDayInput").value = card.billing_cycle_day || 16;
+  document.getElementById("cardDueDayInput").value = card.payment_due_day || 5;
+  document.getElementById("cardThemeSelect").value = card.theme_class || getCardDefaultTheme(card.name);
+  document.getElementById("cardPerksInput").value = card.perks || "";
+
+  const vault = State.decryptedVault[card.name] || {};
+  document.getElementById("vaultHolderNameInput").value = vault.holderName || "DHRUV GORI";
+  document.getElementById("vaultCardNumberInput").value = vault.cardNumber || "";
+  document.getElementById("vaultExpiryInput").value = vault.expiry || "";
+  document.getElementById("vaultCvvInput").value = vault.cvv || "";
+  document.getElementById("vaultPinInput").value = vault.pin || "";
+  document.getElementById("vaultNotesInput").value = vault.notes || "";
+
+  document.getElementById("btnDeleteCard").style.display = "block";
+  document.getElementById("manageCardModal").classList.add("active");
+}
+
+function closeManageCardModal() {
+  document.getElementById("manageCardModal").classList.remove("active");
+}
+
+async function saveCardConfiguration() {
+  const origName = document.getElementById("manageCardOriginalName").value;
+  const name = document.getElementById("cardNameInput").value.trim();
+  const bank = document.getElementById("cardBankSelect").value;
+  const network = document.getElementById("cardNetworkSelect").value;
+  const limit = parseFloat(document.getElementById("cardCreditLimitInput").value) || 0;
+  const cycleDay = parseInt(document.getElementById("cardBillingCycleDayInput").value) || 16;
+  const dueDay = parseInt(document.getElementById("cardDueDayInput").value) || 5;
+  const theme = document.getElementById("cardThemeSelect").value;
+  const perks = document.getElementById("cardPerksInput").value.trim();
+
+  if (!name) {
+    showToast("Please enter a Card Name!", "warning");
+    return;
+  }
+
+  // Confidential credentials
+  const holderName = document.getElementById("vaultHolderNameInput").value.trim();
+  const rawNum = document.getElementById("vaultCardNumberInput").value.replace(/\s+/g, "");
+  const expiry = document.getElementById("vaultExpiryInput").value.trim();
+  const cvv = document.getElementById("vaultCvvInput").value.trim();
+  const pin = document.getElementById("vaultPinInput").value.trim();
+  const notes = document.getElementById("vaultNotesInput").value.trim();
+
+  const vaultPayload = {
+    holderName,
+    cardNumber: rawNum,
+    expiry,
+    cvv,
+    pin,
+    notes
+  };
+
+  // Encrypt with in-memory key if unlocked
+  if (State.security.inMemoryKey) {
+    const encPayload = await VaultCrypto.encryptObject(vaultPayload, State.security.inMemoryKey);
+    if (encPayload) {
+      const allVaults = JSON.parse(localStorage.getItem("tracker_card_vaults_enc") || "{}");
+      allVaults[name] = encPayload;
+      localStorage.setItem("tracker_card_vaults_enc", JSON.stringify(allVaults));
+    }
+  }
+
+  State.decryptedVault[name] = vaultPayload;
+  const last4 = rawNum.length >= 4 ? rawNum.slice(-4) : "••••";
+
+  let card = State.accounts.find(a => a.name === origName);
+  if (card && origName) {
+    card.name = name;
+    card.bank = bank;
+    card.network = network;
+    card.credit_limit = limit;
+    card.billing_cycle_day = cycleDay;
+    card.payment_due_day = dueDay;
+    card.theme_class = theme;
+    card.perks = perks;
+    card.last4 = last4;
+  } else {
+    card = {
+      name: name,
+      type: "Credit Card",
+      bank: bank,
+      network: network,
+      credit_limit: limit,
+      opening_balance: 0,
+      billing_cycle_day: cycleDay,
+      payment_due_day: dueDay,
+      payment_due_date: "",
+      current_bill_amount: 0,
+      is_bill_paid: false,
+      theme_class: theme,
+      perks: perks,
+      last4: last4,
+      is_active: true
+    };
+    State.accounts.push(card);
+  }
+
+  localStorage.setItem("tracker_accounts_custom", JSON.stringify(State.accounts));
+
+  if (State.supabase) {
+    try {
+      await State.supabase.from("accounts").upsert({
+        name: card.name,
+        type: card.type,
+        credit_limit: card.credit_limit,
+        billing_cycle_day: card.billing_cycle_day,
+        color: card.theme_class || "#4f46e5",
+        is_active: true
+      }, { onConflict: "name" });
+    } catch (e) {
+      console.warn("Supabase account upsert warning:", e);
+    }
+  }
+
+  populateAccountSelects();
+  renderApp();
+  closeManageCardModal();
+  showToast(`Card "${name}" saved to Secure Vault!`, "success");
+}
+
+async function confirmDeleteCard() {
+  const origName = document.getElementById("manageCardOriginalName").value;
+  if (!origName) return;
+
+  const txCount = State.transactions.filter(t => t.account === origName).length;
+  if (txCount > 0) {
+    const confirmArchive = confirm(`Card "${origName}" has ${txCount} historical transactions recorded in your ledger. Would you like to ARCHIVE it instead so past records are preserved safely?`);
+    if (confirmArchive) {
+      const card = State.accounts.find(a => a.name === origName);
+      if (card) card.is_active = false;
+      localStorage.setItem("tracker_accounts_custom", JSON.stringify(State.accounts));
+      delete State.decryptedVault[origName];
+      closeManageCardModal();
+      populateAccountSelects();
+      renderApp();
+      showToast(`Card "${origName}" archived!`, "info");
+    }
+    return;
+  }
+
+  const confirmDel = confirm(`Are you sure you want to permanently delete "${origName}"?`);
+  if (!confirmDel) return;
+
+  State.accounts = State.accounts.filter(a => a.name !== origName);
+  localStorage.setItem("tracker_accounts_custom", JSON.stringify(State.accounts));
+  delete State.decryptedVault[origName];
+
+  const allVaults = JSON.parse(localStorage.getItem("tracker_card_vaults_enc") || "{}");
+  delete allVaults[origName];
+  localStorage.setItem("tracker_card_vaults_enc", JSON.stringify(allVaults));
+
+  if (State.supabase) {
+    try {
+      await State.supabase.from("accounts").delete().eq("name", origName);
+    } catch (e) {}
+  }
+
+  closeManageCardModal();
+  populateAccountSelects();
+  renderApp();
+  showToast(`Card "${origName}" removed.`, "info");
+}
+
+function copyCardValue(val, label) {
+  if (!val) {
+    showToast(`No ${label} recorded yet. Tap "Vault / Edit" to add it!`, "warning");
+    return;
+  }
+  navigator.clipboard.writeText(val).then(() => {
+    showToast(`Copied ${label} to clipboard! 📋`, "success");
+  }).catch(() => {
+    showToast(`Copied: ${val}`, "success");
+  });
+}
+
+function toggleCardNumberVisibility(safeId, realNum) {
+  const el = document.getElementById(`cardNumVal_${safeId}`);
+  if (!el || !realNum) return;
+  const isMasked = el.textContent.includes("••••");
+  if (isMasked) {
+    el.textContent = realNum.replace(/(\d{4})/g, "$1 ").trim();
+  } else {
+    el.textContent = realNum.replace(/(\d{4})(\d{4})?(\d{4})?(\d{4})?/, (_, a, b, c, d) => `${a} •••• •••• ${d || c || b}`);
+  }
+}
+
+function toggleCvvVisibility(safeId, realCvv) {
+  const el = document.getElementById(`cvvVal_${safeId}`);
+  if (!el || !realCvv) return;
+  el.textContent = (el.textContent === "•••") ? realCvv : "•••";
+}
+
+function togglePinVisibility(safeId, realPin) {
+  const el = document.getElementById(`pinVal_${safeId}`);
+  if (!el || !realPin) return;
+  el.textContent = (el.textContent === "••••") ? realPin : "••••";
+}
+
+function switchMobileTab(tabId) {
+  document.querySelectorAll(".dock-item").forEach(d => {
+    d.classList.toggle("active", d.getAttribute("data-tab") === tabId);
+  });
+  document.querySelectorAll(".nav-tab").forEach(t => {
+    t.classList.toggle("active", t.getAttribute("data-tab") === tabId);
+  });
+  document.querySelectorAll(".tab-pane").forEach(p => {
+    p.classList.toggle("active", p.id === tabId);
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }

@@ -15,6 +15,44 @@
 </head>
 <body>
 
+  <!-- Fullscreen Dual-Tier Security Lock Overlay -->
+  <div id="securityLockOverlay" class="security-lock-overlay">
+    <div class="lock-card">
+      <div class="lock-icon-badge">🔒</div>
+      <h2 class="lock-title">Dhruv Financial OS</h2>
+      <p class="lock-subtitle" id="lockScreenSubtitle">Enter 4-Digit Passcode to Unlock</p>
+
+      <!-- PIN Indicator Dots -->
+      <div class="pin-dots-container" id="pinDotsContainer">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+
+      <!-- Native Touch Numpad -->
+      <div class="pin-keypad">
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('1')">1</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('2')">2</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('3')">3</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('4')">4</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('5')">5</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('6')">6</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
+        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID">🪪</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
+        <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
+      </div>
+
+      <!-- Tier-1 Quick Log Action (Allows fast expense logging with zero passcode friction) -->
+      <button type="button" class="btn-quick-log-trigger" onclick="openQuickLogModal()">
+        ⚡ Quick Log Spend (No Passcode Needed)
+      </button>
+    </div>
+  </div>
+
   <!-- Top App Header -->
   <header class="app-header">
     <div class="container header-content">
@@ -33,22 +71,22 @@
         </div>
 
         <!-- Books of Accounts Setup (Start Date & Opening Balances) -->
-        <button class="btn btn-books" onclick="openBooksSetupModal()" title="Configure Books Start Date & Opening Balances">
+        <button class="btn btn-books desktop-btn" onclick="openBooksSetupModal()" title="Configure Books Start Date & Opening Balances">
           📚 Books Setup
         </button>
 
         <!-- Transfer Funds Button -->
-        <button class="btn btn-secondary" onclick="openTransferModal()">
+        <button class="btn btn-secondary desktop-btn" onclick="openTransferModal()">
           🔄 Transfer Funds
         </button>
 
         <!-- Primary Add Transaction Button -->
-        <button class="btn btn-primary" onclick="openAddTransactionModal()">
+        <button class="btn btn-primary desktop-btn" onclick="openAddTransactionModal()">
           + Add Transaction
         </button>
 
         <!-- Gemini AI Copilot Button -->
-        <button class="btn btn-gemini" onclick="toggleGeminiChat()">
+        <button class="btn btn-gemini desktop-btn" onclick="toggleGeminiChat()">
           ✨ AI Copilot
         </button>
 
@@ -57,14 +95,19 @@
           🔔<span id="headerNotifBadge" class="notif-badge" style="display:none;">0</span>
         </button>
 
+        <!-- Privacy Blur Mode Toggle -->
+        <button class="btn btn-icon" id="privacyToggleBtn" onclick="togglePrivacyMode()" title="Toggle Privacy Blur (Shift + P)">
+          👁️
+        </button>
+
         <!-- Supabase Settings Button -->
-        <button class="btn btn-icon" onclick="openSettingsModal()" title="Database & Gemini Settings">
+        <button class="btn btn-icon" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
           ⚙️
         </button>
 
-        <!-- Theme Toggle -->
-        <button class="btn btn-icon" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
-          ☀️
+        <!-- Theme Toggle (Auto / Dark / Light) -->
+        <button class="btn btn-icon" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
+          💻
         </button>
 
         <!-- Status Badge -->
@@ -354,15 +397,28 @@
       <!-- TAB 4: CARDS & EMI SCHEDULE                -->
       <!-- ========================================== -->
       <section id="cards-emis" class="tab-pane">
-        <!-- Credit Card Tracker -->
+        <!-- Unified Card Vault & Credit Card Tracker -->
         <div class="card-section">
-          <div class="section-header">
+          <div class="vault-header-bar">
             <div>
-              <h3 class="section-title">💳 Credit Card Limits & Outstanding Tracker</h3>
-              <p class="section-desc">Tracks total spend, bill payments, and available credit limit across all cards</p>
+              <h3 class="section-title">💳 Unified Card Vault & Credit Hub</h3>
+              <p class="section-desc">Access all your cards in one place: limits, billing cycles, due dates & encrypted credentials (Card No, CVV, PIN)</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <button class="btn btn-secondary" onclick="toggleCardVaultViewMode()" id="cardViewToggleBtn" title="Toggle Grid / Table view">
+                📋 Table View
+              </button>
+              <button class="btn btn-primary" onclick="openAddCardModal()">
+                + Add New Card
+              </button>
             </div>
           </div>
-          <div class="table-responsive">
+
+          <!-- Tactile Visual Card Stacks Deck -->
+          <div id="cardVaultDeckContainer" class="card-deck-grid"></div>
+
+          <!-- Compact Data Table (Collapsible / Toggleable) -->
+          <div id="creditCardTableWrapper" class="table-responsive" style="display: none; margin-top: 1rem;">
             <table class="data-table">
               <thead>
                 <tr>
@@ -933,6 +989,40 @@
           <small style="color:var(--text-muted); font-size:0.75rem;">Get a free API key at aistudio.google.com for full generative reasoning.</small>
         </div>
 
+        <h4 style="margin-top:1.5rem; margin-bottom:0.5rem; font-size:0.95rem;">3. 🔒 App Security & Passcode Lock</h4>
+        <div class="form-group">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:600; font-size:0.875rem;">
+            <input type="checkbox" id="securityPinEnabledCheckbox" onchange="togglePinSecurityOption()">
+            Enable 4-Digit Passcode Lock
+          </label>
+          <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:0.25rem;">
+            Locks financial data behind a secure passcode with Dual-Tier Quick Log support.
+          </small>
+        </div>
+
+        <div id="pinConfigSection" style="display:none; background:var(--bg-tertiary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:1rem;">
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label class="form-label">Set / Change 4-Digit Passcode</label>
+            <input type="password" id="masterPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="e.g. 1234">
+          </div>
+          <div class="form-group" style="margin-bottom:0.75rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem;">
+              <input type="checkbox" id="bioAuthEnabledCheckbox">
+              Enable Face ID / Touch ID (Biometrics)
+            </label>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Auto-Lock Inactivity Timeout</label>
+            <select id="autoLockTimeoutSelect" class="form-select">
+              <option value="immediate">Immediately on App Switch / Lock</option>
+              <option value="60000">After 1 minute of inactivity</option>
+              <option value="180000" selected>After 3 minutes of inactivity</option>
+              <option value="300000">After 5 minutes of inactivity</option>
+              <option value="never">Never (Manual lock only)</option>
+            </select>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
@@ -940,6 +1030,205 @@
       </div>
     </div>
   </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: MANAGE CREDIT CARD & SECURE VAULT   -->
+  <!-- ========================================== -->
+  <div id="manageCardModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="manageCardModalTitle">💳 Manage Card & Secure Vault</h3>
+        <button class="modal-close" onclick="closeManageCardModal()">✕</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <input type="hidden" id="manageCardOriginalName">
+
+        <h4 style="margin-bottom:0.75rem; font-size:0.92rem; color:var(--primary); font-weight:700;">1. Card Profile & Limits</h4>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Card Nickname / Name *</label>
+            <input type="text" id="cardNameInput" class="form-input" placeholder="e.g. Amex MRCC, ICICI Coral" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bank Name *</label>
+            <select id="cardBankSelect" class="form-select">
+              <option value="HDFC Bank">HDFC Bank</option>
+              <option value="Kotak Mahindra">Kotak Mahindra Bank</option>
+              <option value="ICICI Bank">ICICI Bank</option>
+              <option value="American Express">American Express</option>
+              <option value="Unity / Roar">Unity / Roar Bank</option>
+              <option value="Axis Bank">Axis Bank</option>
+              <option value="SBI Card">SBI Card</option>
+              <option value="Other">Other Bank</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Card Network *</label>
+            <select id="cardNetworkSelect" class="form-select">
+              <option value="RuPay">RuPay</option>
+              <option value="Visa">Visa</option>
+              <option value="Mastercard">Mastercard</option>
+              <option value="American Express">American Express</option>
+              <option value="Diners Club">Diners Club</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Credit Limit (₹) *</label>
+            <input type="number" id="cardCreditLimitInput" class="form-input" placeholder="e.g. 150000" step="any" required>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.75rem;">
+          <div class="form-group">
+            <label class="form-label">Billing Cycle Day</label>
+            <input type="number" id="cardBillingCycleDayInput" class="form-input" min="1" max="31" placeholder="e.g. 16 (16th)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Due Day</label>
+            <input type="number" id="cardDueDayInput" class="form-input" min="1" max="31" placeholder="e.g. 5 (5th)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Card Style / Color</label>
+            <select id="cardThemeSelect" class="form-select">
+              <option value="card-theme-amex">Amex Deep Blue</option>
+              <option value="card-theme-icici-coral">Coral Ruby / Orange</option>
+              <option value="card-theme-icici-amazon">Amazon Pay Slate</option>
+              <option value="card-theme-roar">Roar CC Violet</option>
+              <option value="card-theme-hdfc">HDFC Navy</option>
+              <option value="card-theme-kotak">Kotak Crimson</option>
+              <option value="card-theme-default">Midnight Dark</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Perks & Rewards Summary</label>
+          <input type="text" id="cardPerksInput" class="form-input" placeholder="e.g. 5% cashback on Amazon, Airport Lounge Access">
+        </div>
+
+        <!-- Encrypted Vault Section -->
+        <div style="margin-top:1.5rem; background:rgba(99, 102, 241, 0.08); border:1px solid rgba(99, 102, 241, 0.25); border-radius:var(--radius-md); padding:1rem;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+            <h4 style="font-size:0.92rem; color:var(--primary); font-weight:700; margin:0;">
+              🔒 Encrypted Card Credentials (Vault)
+            </h4>
+            <span class="badge" style="background:var(--primary-light); color:var(--primary); font-size:0.68rem;">AES-256 GCM</span>
+          </div>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
+            These credentials are encrypted client-side using your passcode before saving. They are only decrypted when unlocked with your PIN or Face ID.
+          </p>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Cardholder Name</label>
+              <input type="text" id="vaultHolderNameInput" class="form-input" placeholder="DHRUV GORI">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full 16-Digit Card Number</label>
+              <input type="text" id="vaultCardNumberInput" class="form-input" placeholder="4532 •••• •••• 1234" maxlength="19" inputmode="numeric">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.75rem;">
+            <div class="form-group">
+              <label class="form-label">Expiry (MM/YY)</label>
+              <input type="text" id="vaultExpiryInput" class="form-input" placeholder="10/29" maxlength="5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CVV / CVC</label>
+              <input type="password" id="vaultCvvInput" class="form-input" placeholder="•••" maxlength="4" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Card PIN (ATM/POS)</label>
+              <input type="password" id="vaultPinInput" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Private Vault Notes / NetBanking Details</label>
+            <input type="text" id="vaultNotesInput" class="form-input" placeholder="e.g. Customer ID: 94827104">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between;">
+        <button type="button" class="btn btn-secondary text-danger" id="btnDeleteCard" style="display:none;" onclick="confirmDeleteCard()">
+          🗑️ Delete Card
+        </button>
+        <div style="display:flex; gap:0.5rem; margin-left:auto;">
+          <button type="button" class="btn btn-secondary" onclick="closeManageCardModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveCardConfiguration()">Save Card</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: TIER-1 PRIVACY-SAFE QUICK LOG       -->
+  <!-- ========================================== -->
+  <div id="quickLogModal" class="modal-overlay" style="z-index: 10005;">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">⚡ Quick Log Transaction</h3>
+        <button class="modal-close" onclick="closeQuickLogModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+          Record an expense quickly on the go. Your financial balances and private ledgers remain protected behind the lock screen.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Amount (₹) *</label>
+          <input type="number" id="quickLogAmountInput" class="form-input" placeholder="e.g. 350" step="any" required autofocus style="font-size:1.2rem; font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Paid Via (Account) *</label>
+          <select id="quickLogAccountSelect" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select id="quickLogCategorySelect" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Merchant</label>
+          <input type="text" id="quickLogDescInput" class="form-input" placeholder="e.g. Swiggy Lunch, HPCL Petrol, Chai">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeQuickLogModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitQuickLogTransaction()">✓ Save & Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MOBILE BOTTOM NAVIGATION DOCK (< 768px)    -->
+  <!-- ========================================== -->
+  <nav class="mobile-bottom-dock">
+    <button class="dock-item active" data-tab="overview" onclick="switchMobileTab('overview')">
+      <span class="dock-icon">📊</span>
+      <span class="dock-label">Home</span>
+    </button>
+    <button class="dock-item" data-tab="bank-ledgers" onclick="switchMobileTab('bank-ledgers')">
+      <span class="dock-icon">🏦</span>
+      <span class="dock-label">Ledgers</span>
+    </button>
+    <div class="dock-fab-wrapper">
+      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction">+</button>
+    </div>
+    <button class="dock-item" data-tab="cards-emis" onclick="switchMobileTab('cards-emis')">
+      <span class="dock-icon">💳</span>
+      <span class="dock-label">Cards</span>
+    </button>
+    <button class="dock-item" data-tab="review" onclick="switchMobileTab('review')">
+      <span class="dock-icon">📥</span>
+      <span class="dock-label">Inbox</span>
+      <span id="dockReviewBadge" class="dock-badge" style="display:none;">0</span>
+    </button>
+  </nav>
 
   <div id="toastContainer" class="toast-container"></div>
 

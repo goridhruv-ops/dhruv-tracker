@@ -3,15 +3,16 @@
    ============================================================================== */
 
 :root {
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
   
   /* Light Theme */
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
-  --bg-glass: rgba(255, 255, 255, 0.88);
+  --bg-glass: rgba(255, 255, 255, 0.90);
   --border-color: #e2e8f0;
   --border-subtle: #cbd5e1;
+  --card-border: rgba(0, 0, 0, 0.08);
   
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -1424,4 +1425,610 @@ table.data-table tbody tr:last-child td {
   color: var(--income);
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
+
+/* ==============================================================================
+   TABULAR NUMERALS & FINTECH TYPOGRAPHY
+   ============================================================================== */
+.currency-amount, .balance-display, .bank-balance-display, .metric-value,
+.table-cell-amount, td, .stat-number, .card-number-val, .card-limit-val {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ==============================================================================
+   PRIVACY BLUR MODE (COFFEE SHOP / PUBLIC TRANSIT MODE)
+   ============================================================================== */
+[data-privacy="true"] .privacy-sensitive {
+  filter: blur(8px) !important;
+  user-select: none !important;
+  transition: filter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+[data-privacy="true"] .privacy-sensitive:hover,
+[data-privacy="true"] .privacy-sensitive:active {
+  filter: blur(0px) !important;
+}
+
+/* ==============================================================================
+   DUAL-TIER SECURITY LOCK SCREEN OVERLAY
+   ============================================================================== */
+.security-lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(9, 13, 22, 0.95);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: #ffffff;
+}
+
+.security-lock-overlay.active {
+  display: flex;
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.lock-icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
+}
+
+.lock-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.lock-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.75rem;
+}
+
+/* PIN Indicator Dots */
+.pin-dots-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.pin-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pin-dot.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 12px var(--primary-glow);
+  transform: scale(1.15);
+}
+
+.pin-dot.error {
+  background: var(--expense);
+  border-color: var(--expense);
+  animation: pin-shake 0.3s ease;
+}
+
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Native Touch Numpad */
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 280px;
+  margin-bottom: 1.75rem;
+}
+
+.keypad-btn {
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 1.45rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keypad-btn:active {
+  background: rgba(99, 102, 241, 0.35);
+  border-color: var(--primary);
+  transform: scale(0.92);
+}
+
+.keypad-btn.action-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+}
+
+.keypad-btn.action-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(0.95);
+}
+
+/* Prominent Tier-1 Quick Log Button */
+.btn-quick-log-trigger {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(56, 189, 248, 0.15));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  font-size: 0.92rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+}
+
+.btn-quick-log-trigger:hover, .btn-quick-log-trigger:active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(56, 189, 248, 0.25));
+  border-color: #34d399;
+  transform: translateY(-2px);
+}
+
+/* ==============================================================================
+   SECURE CARD VAULT & PHYSICAL CARD STACKS
+   ============================================================================== */
+.vault-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.vault-stats-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.vault-pill {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.card-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.tactile-card {
+  position: relative;
+  border-radius: 20px;
+  padding: 1.5rem;
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 230px;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tactile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+/* Card Gradient Themes */
+.card-theme-amex {
+  background: linear-gradient(135deg, #0f3d6b 0%, #006fcf 50%, #001f3f 100%);
+}
+.card-theme-icici-amazon {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 45%, #b45309 100%);
+}
+.card-theme-icici-coral {
+  background: linear-gradient(135deg, #7c2d12 0%, #c2410c 50%, #9a3412 100%);
+}
+.card-theme-roar {
+  background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #312e81 100%);
+}
+.card-theme-hdfc {
+  background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0369a1 100%);
+}
+.card-theme-kotak {
+  background: linear-gradient(135deg, #881337 0%, #be123c 50%, #9f1239 100%);
+}
+.card-theme-default {
+  background: linear-gradient(135deg, #1f2937 0%, #374151 50%, #111827 100%);
+}
+
+.card-gloss-overlay {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  z-index: 2;
+}
+
+.card-bank-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-bank-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.card-type-tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.card-network-logo {
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(8px);
+}
+
+/* EMV Chip Graphic */
+.card-chip {
+  width: 44px;
+  height: 32px;
+  background: linear-gradient(135deg, #e5c07b, #d19a66);
+  border-radius: 6px;
+  border: 1px solid #b8860b;
+  position: relative;
+  margin-bottom: 1rem;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+.card-chip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* 16-Digit Card Number Box */
+.card-number-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 0.85rem;
+  z-index: 2;
+}
+
+.card-number-val {
+  font-family: "SF Mono", "Geist Mono", "Courier New", monospace;
+  font-size: 1.05rem;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+.card-btn-inline {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+.card-btn-inline:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Sensitive Meta Row (Expiry, CVV, PIN) */
+.card-vault-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  z-index: 2;
+}
+
+.vault-field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.vault-field-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.vault-field-val-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vault-field-val {
+  font-family: "SF Mono", monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Limit & Billing Progress on Card */
+.card-status-tray {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 2;
+}
+
+.card-stats-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.card-limit-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.card-limit-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.card-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-card-action {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-card-action:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.btn-card-action.primary-pay {
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+}
+.btn-card-action.primary-pay:hover {
+  background: #e2e8f0;
+}
+
+/* ==============================================================================
+   MOBILE BOTTOM NAVIGATION DOCK (< 768px)
+   ============================================================================== */
+.mobile-bottom-dock {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Give main content clearance for fixed bottom dock */
+  main.main-content {
+    padding-bottom: 84px !important;
+  }
+
+  /* Simplify top header on mobile */
+  .header-actions .desktop-btn {
+    display: none !important;
+  }
+
+  /* Hide the 9 scrolling horizontal tabs on mobile */
+  nav.nav-tabs {
+    display: none !important;
+  }
+
+  /* Show fixed bottom dock */
+  .mobile-bottom-dock {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-color);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 500;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08);
+  }
+
+  .dock-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 600;
+    gap: 3px;
+    cursor: pointer;
+    position: relative;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dock-item .dock-icon {
+    font-size: 1.25rem;
+  }
+
+  .dock-item.active {
+    color: var(--primary);
+  }
+
+  .dock-item.active .dock-icon {
+    transform: scale(1.1);
+  }
+
+  /* Central Floating Action Button (FAB) */
+  .dock-fab-wrapper {
+    position: relative;
+    top: -14px;
+  }
+
+  .dock-fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #ffffff;
+    border: 3px solid var(--bg-secondary);
+    font-size: 1.7rem;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px var(--primary-glow);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dock-fab:active {
+    transform: scale(0.92);
+  }
+
+  .dock-badge {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    background: var(--expense);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--bg-secondary);
+  }
+
+  /* Single Column Layouts on Mobile */
+  .bank-balances-banner {
+    grid-template-columns: 1fr !important;
+  }
+  .card-deck-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 
