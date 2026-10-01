@@ -14,8 +14,8 @@ window.INITIAL_DATA = {
     autoLockTimeout: "180000"
   },
   supabaseConfig: {
-    url: "",
-    anonKey: ""
+    url: "https://kvqtfigjmryxztdbkgcg.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2cXRmaWdqbXJ5eHp0ZGJrZ2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Njg2ODYsImV4cCI6MjEwNjM0NDY4Nn0.CWbm4WwvLsqZccgWaMClCJ8JxmCchLVRlaYvDEhiC1o"
   },
   accounts: [
     {

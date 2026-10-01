@@ -36,8 +36,8 @@
  */
 
 var CONFIG = {
-  SUPABASE_URL: "https://YOUR_PROJECT_REF.supabase.co", // Replace with your Supabase URL
-  SUPABASE_ANON_KEY: "YOUR_SUPABASE_ANON_KEY",         // Replace with your Supabase Anon Key
+  SUPABASE_URL: "https://kvqtfigjmryxztdbkgcg.supabase.co", // Dhruv's Live Supabase Project URL
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2cXRmaWdqbXJ5eHp0ZGJrZ2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Njg2ODYsImV4cCI6MjEwNjM0NDY4Nn0.CWbm4WwvLsqZccgWaMClCJ8JxmCchLVRlaYvDEhiC1o", // Dhruv's Supabase Anon Key
   PROCESSED_LABEL: "Tracker_Processed",                 // Gmail label applied to processed emails
   MAX_EMAILS_PER_RUN: 30                               // Process up to 30 emails per execution
 };
