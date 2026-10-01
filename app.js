@@ -2499,7 +2499,8 @@ function closeSettingsModal() {
 }
 
 async function saveSupabaseSettings() {
-  const url = document.getElementById("sbUrlInput").value.trim();
+  const rawUrl = document.getElementById("sbUrlInput").value.trim();
+  const url = cleanSupabaseUrl(rawUrl);
   const key = document.getElementById("sbKeyInput").value.trim();
   const gKey = document.getElementById("geminiKeyInput").value.trim();
 
