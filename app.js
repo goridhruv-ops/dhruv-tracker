@@ -5,6 +5,11 @@
  * ==============================================================================
  */
 
+function cleanSupabaseUrl(rawUrl) {
+  if (!rawUrl) return "";
+  return String(rawUrl).trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
+}
+
 // Global Application State
 const State = {
   booksStartDate: localStorage.getItem("tracker_books_start_date") || (window.INITIAL_DATA ? window.INITIAL_DATA.booksStartDate : "2026-10-01"),
@@ -18,8 +23,8 @@ const State = {
   rollovers: {},
   supabase: null,
   supabaseConfig: {
-    url: localStorage.getItem("tracker_sb_url") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && window.INITIAL_DATA.supabaseConfig.url) || "",
-    key: localStorage.getItem("tracker_sb_key") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && (window.INITIAL_DATA.supabaseConfig.anonKey || window.INITIAL_DATA.supabaseConfig.key)) || ""
+    url: cleanSupabaseUrl(localStorage.getItem("tracker_sb_url") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && window.INITIAL_DATA.supabaseConfig.url) || ""),
+    key: String(localStorage.getItem("tracker_sb_key") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && (window.INITIAL_DATA.supabaseConfig.anonKey || window.INITIAL_DATA.supabaseConfig.key)) || "").trim()
   },
   geminiApiKey: localStorage.getItem("tracker_gemini_key") || "",
   charts: {
@@ -175,7 +180,12 @@ function togglePrivacyMode() {
 
 // Supabase Initialization
 function initSupabase() {
-  const { url, key } = State.supabaseConfig;
+  let { url, key } = State.supabaseConfig;
+  url = cleanSupabaseUrl(url);
+  key = (key || "").trim();
+  State.supabaseConfig.url = url;
+  State.supabaseConfig.key = key;
+
   const statusEl = document.getElementById("syncStatusBadge");
   
   if (url && key && window.supabase) {
@@ -202,16 +212,90 @@ function initSupabase() {
   return false;
 }
 
-// Load Data
+// Load Data with Full Cloud Synchronization
 async function loadData() {
   const localSaved = localStorage.getItem("tracker_transactions");
-  
+
+  // 1. Synchronize Books Setup (Start Date, Opening Balances, Person Balances) from Supabase
   if (State.supabase) {
     try {
-      const { data: txs, error } = await State.supabase.from("transactions").select("*").gte("date", State.booksStartDate).order("date", { ascending: false });
+      const { data: bsData, error: bsErr } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "books_setup")
+        .maybeSingle();
+
+      if (!bsErr && bsData && bsData.value) {
+        const val = bsData.value;
+        if (val.startDate) {
+          State.booksStartDate = val.startDate;
+          localStorage.setItem("tracker_books_start_date", val.startDate);
+        }
+        if (val.accOpenings) {
+          localStorage.setItem("tracker_account_openings", JSON.stringify(val.accOpenings));
+        }
+        if (val.personOpenings) {
+          State.personOpeningBalances = { ...State.personOpeningBalances, ...val.personOpenings };
+          localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
+        }
+      } else if (!bsErr && (!bsData || !bsData.value)) {
+        // Seed local books setup to Supabase if not yet configured in cloud
+        const localStartDate = localStorage.getItem("tracker_books_start_date") || State.booksStartDate;
+        const localAccOpenings = localStorage.getItem("tracker_account_openings") ? JSON.parse(localStorage.getItem("tracker_account_openings")) : null;
+        const localPersonOpenings = localStorage.getItem("tracker_person_opening_balances") ? JSON.parse(localStorage.getItem("tracker_person_opening_balances")) : null;
+        if (localAccOpenings || localStartDate) {
+          await State.supabase.from("settings").upsert({
+            key: "books_setup",
+            value: {
+              startDate: localStartDate,
+              accOpenings: localAccOpenings || {},
+              personOpenings: localPersonOpenings || {},
+              updatedAt: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          }, { onConflict: "key" });
+        }
+      }
+    } catch (e) {
+      console.warn("Books setup cloud sync notice:", e);
+    }
+  }
+
+  // 2. Synchronize Transactions from Supabase
+  if (State.supabase) {
+    try {
+      const { data: txs, error } = await State.supabase
+        .from("transactions")
+        .select("*")
+        .gte("date", State.booksStartDate)
+        .order("date", { ascending: false });
+
       if (!error && txs) {
-        State.transactions = txs;
-        saveLocalTransactions(txs);
+        if (txs.length === 0 && localSaved) {
+          // If cloud is empty but this device has local transactions, migrate them to cloud!
+          try {
+            const parsedLocal = JSON.parse(localSaved);
+            if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+              const eligible = parsedLocal.filter(t => t.date && t.date >= State.booksStartDate);
+              if (eligible.length > 0) {
+                console.log("Migrating local transactions to Supabase cloud:", eligible.length);
+                for (const t of eligible) {
+                  await State.supabase.from("transactions").upsert(t);
+                }
+                State.transactions = eligible;
+              } else {
+                State.transactions = [];
+              }
+            } else {
+              State.transactions = [];
+            }
+          } catch (pe) {
+            State.transactions = [];
+          }
+        } else {
+          State.transactions = txs;
+          saveLocalTransactions(txs);
+        }
       } else if (localSaved) {
         State.transactions = JSON.parse(localSaved);
       } else {
@@ -229,7 +313,7 @@ async function loadData() {
     }
   }
 
-  // Load Categories, Accounts, EMIs, and Budgets
+  // 3. Load Categories, Accounts, EMIs, and Budgets
   State.categories = window.INITIAL_DATA ? [...window.INITIAL_DATA.categories] : [];
   const savedCustomAccounts = localStorage.getItem("tracker_accounts_custom");
   if (savedCustomAccounts) {
@@ -249,31 +333,37 @@ async function loadData() {
   // Load custom saved opening balances if configured
   const savedAccountOpenings = localStorage.getItem("tracker_account_openings");
   if (savedAccountOpenings) {
-    const accOpenings = JSON.parse(savedAccountOpenings);
-    State.accounts.forEach(a => {
-      if (accOpenings[a.name] !== undefined) a.opening_balance = accOpenings[a.name];
-    });
+    try {
+      const accOpenings = JSON.parse(savedAccountOpenings);
+      State.accounts.forEach(a => {
+        if (accOpenings[a.name] !== undefined) a.opening_balance = accOpenings[a.name];
+      });
+    } catch (e) {}
   }
 
   const savedPersonOpenings = localStorage.getItem("tracker_person_opening_balances");
   if (savedPersonOpenings) {
-    State.personOpeningBalances = JSON.parse(savedPersonOpenings);
+    try {
+      State.personOpeningBalances = JSON.parse(savedPersonOpenings);
+    } catch (e) {}
   }
 
   // Load custom saved card bills & due dates
   const savedCardBills = localStorage.getItem("tracker_card_bills");
   if (savedCardBills) {
-    State.cardBills = JSON.parse(savedCardBills);
-    State.accounts.forEach(a => {
-      if (State.cardBills[a.name]) {
-        if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
-        if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
-        if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
-      }
-    });
+    try {
+      State.cardBills = JSON.parse(savedCardBills);
+      State.accounts.forEach(a => {
+        if (State.cardBills[a.name]) {
+          if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
+          if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
+          if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+        }
+      });
+    } catch (e) {}
   }
 
-  // Load cloud card bills from Supabase if connected
+  // 4. Load cloud card bills from Supabase if connected
   if (State.supabase) {
     try {
       const { data: bills } = await State.supabase.from("card_bills").select("*");
@@ -1520,6 +1610,24 @@ function saveBooksSetup() {
     State.personOpeningBalances[pName] = val;
   });
   localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
+
+  // Sync to Supabase settings for seamless multi-device consistency
+  if (State.supabase) {
+    State.supabase.from("settings").upsert({
+      key: "books_setup",
+      value: {
+        startDate: startDate,
+        accOpenings: accOpenings,
+        personOpenings: State.personOpeningBalances,
+        updatedAt: new Date().toISOString()
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: "key" }).then(() => {
+      console.log("Books setup successfully synced to Supabase cloud");
+    }).catch(err => {
+      console.warn("Could not sync books_setup to Supabase:", err);
+    });
+  }
 
   showToast(`Books of Accounts configured starting from ${startDate}!`, "success");
   closeBooksSetupModal();
