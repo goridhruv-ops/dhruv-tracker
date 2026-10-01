@@ -178,6 +178,37 @@ function togglePrivacyMode() {
   showToast(next ? "Privacy Blur Activated (Public Mode)" : "Privacy Blur Disabled");
 }
 
+let realtimeChannel = null;
+
+function setupSupabaseRealtime() {
+  if (!State.supabase) return;
+  if (realtimeChannel) {
+    try { State.supabase.removeChannel(realtimeChannel); } catch (e) {}
+  }
+
+  try {
+    realtimeChannel = State.supabase
+      .channel("public-db-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, (payload) => {
+        console.log("⚡ Realtime: transaction changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, (payload) => {
+        console.log("⚡ Realtime: settings changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "card_bills" }, (payload) => {
+        console.log("⚡ Realtime: card_bills changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .subscribe((status) => {
+        console.log("Supabase Realtime channel status:", status);
+      });
+  } catch (err) {
+    console.warn("Could not attach Supabase Realtime channel:", err);
+  }
+}
+
 // Supabase Initialization
 function initSupabase() {
   let { url, key } = State.supabaseConfig;
@@ -197,6 +228,7 @@ function initSupabase() {
         statusEl.style.color = "#fff";
         statusEl.innerHTML = "● Supabase Connected";
       }
+      setupSupabaseRealtime();
       return true;
     } catch (e) {
       console.error("Supabase init error:", e);
@@ -267,8 +299,8 @@ async function loadData() {
       const { data: txs, error } = await State.supabase
         .from("transactions")
         .select("*")
-        .gte("date", State.booksStartDate)
-        .order("date", { ascending: false });
+        .order("date", { ascending: false })
+        .limit(1000);
 
       if (!error && txs) {
         if (txs.length === 0 && localSaved) {
@@ -276,7 +308,7 @@ async function loadData() {
           try {
             const parsedLocal = JSON.parse(localSaved);
             if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
-              const eligible = parsedLocal.filter(t => t.date && t.date >= State.booksStartDate);
+              const eligible = parsedLocal.filter(t => t.date);
               if (eligible.length > 0) {
                 console.log("Migrating local transactions to Supabase cloud:", eligible.length);
                 for (const t of eligible) {
@@ -1953,8 +1985,14 @@ async function saveTransaction() {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").upsert(tx);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").upsert(tx);
+      if (sbErr) {
+        console.error("Supabase upsert error:", sbErr);
+        showToast("Cloud sync failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase upsert exception:", e);
+    }
   }
 
   showToast("Transaction saved successfully!", "success");
@@ -1987,8 +2025,14 @@ async function deleteTransaction(id) {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").delete().eq("id", id);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").delete().eq("id", id);
+      if (sbErr) {
+        console.error("Supabase delete error:", sbErr);
+        showToast("Cloud delete failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase delete exception:", e);
+    }
   }
 
   showToast("Transaction deleted.", "info");
@@ -2044,8 +2088,14 @@ async function executeInternalTransfer() {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").insert(tx);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").insert(tx);
+      if (sbErr) {
+        console.error("Supabase transfer error:", sbErr);
+        showToast("Cloud transfer failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase transfer exception:", e);
+    }
   }
 
   showToast(`Transferred ₹${amount} from ${fromAcc} to ${toAcc}!`, "success");
@@ -3607,12 +3657,51 @@ function updatePinDots() {
 
 async function verifyEnteredPin() {
   const pin = State.security.activePinBuffer;
-  const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
+  if (!pin || pin.length !== 4) return;
 
-  if (hash === State.security.pinHash) {
+  let isVerified = false;
+  let derivedKey = null;
+
+  // 1. Direct Web-Based Authentication against live Supabase cloud
+  if (State.supabase) {
+    try {
+      const { data, error } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "app_security")
+        .maybeSingle();
+
+      if (!error && data && data.value && data.value.pinHash && data.value.pinSalt) {
+        const liveHash = data.value.pinHash;
+        const liveSalt = data.value.pinSalt;
+        const testHash = await VaultCrypto.hashPin(pin, liveSalt);
+
+        if (testHash === liveHash) {
+          isVerified = true;
+          State.security.pinHash = liveHash;
+          State.security.pinSalt = liveSalt;
+          localStorage.setItem("tracker_pin_hash", liveHash);
+          localStorage.setItem("tracker_pin_salt", liveSalt);
+          derivedKey = await VaultCrypto.deriveAesKey(pin, liveSalt);
+        }
+      }
+    } catch (e) {
+      console.warn("Live cloud PIN check notice:", e);
+    }
+  }
+
+  // 2. Fallback to cached/local hash if offline or cloud check did not match
+  if (!isVerified && State.security.pinHash && State.security.pinSalt) {
+    const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
+    if (hash === State.security.pinHash) {
+      isVerified = true;
+      derivedKey = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
+    }
+  }
+
+  if (isVerified) {
     sessionStorage.setItem("tracker_pin_session", pin);
-    const key = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
-    await unlockApp(key);
+    await unlockApp(derivedKey);
   } else {
     const dots = document.querySelectorAll("#pinDotsContainer .pin-dot");
     dots.forEach(d => d.classList.add("error"));
@@ -3636,12 +3725,21 @@ function initAutoLock() {
     window.addEventListener(ev, resetIdleTimer, { passive: true });
   });
 
-  // Lock immediately on tab switch / phone lock
+  // Handle visibility changes: lock when hidden, sync fresh cloud data when shown
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && State.security.pinEnabled) {
       if (State.security.autoLockTimeout === "immediate" || State.security.autoLockTimeout !== "never") {
         lockApp();
       }
+    } else if (!document.hidden && State.supabase) {
+      console.log("App foregrounded: fetching fresh data from Supabase cloud...");
+      loadData().then(() => renderApp());
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (State.supabase) {
+      loadData().then(() => renderApp());
     }
   });
 
