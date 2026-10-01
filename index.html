@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Dhruv's Financial OS | Modern Budget Tracker</title>
-  <link rel="stylesheet" href="styles.css?v=20261001_v5">
+  <link rel="stylesheet" href="styles.css?v=20261001_v7">
   
   <!-- Supabase & Chart.js CDNs (GitHub Pages Ready) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,39 +25,89 @@
 <body>
 
   <!-- Fullscreen Dual-Tier Security Lock Overlay -->
-  <div id="securityLockOverlay" class="security-lock-overlay">
+  <div id="securityLockOverlay" class="security-lock-overlay" role="dialog" aria-modal="true" aria-label="Passcode Security Vault">
     <div class="lock-card">
-      <div class="lock-icon-badge"><i data-lucide="lock" style="width:28px;height:28px;color:#818cf8;"></i></div>
-      <h2 class="lock-title">Dhruv Financial OS</h2>
-      <p class="lock-subtitle" id="lockScreenSubtitle">Enter 4-Digit Passcode to Unlock<span style="display:block;font-size:0.75rem;color:var(--text-muted);margin-top:4px;">⚡ Live Realtime Cloud • v2.4</span></p>
+      <div class="lock-header-section">
+        <div class="lock-icon-badge">
+          <svg class="vault-shield-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 8v4"/>
+            <path d="M12 16h.01"/>
+          </svg>
+        </div>
+        <h2 class="lock-title">Dhruv Financial OS</h2>
+        <p class="lock-subtitle" id="lockScreenSubtitle">
+          Enter Passcode to Access Vault
+          <span class="lock-cloud-status">
+            <span class="status-pulse-dot"></span> End-to-End Encrypted Cloud
+          </span>
+        </p>
+      </div>
 
       <!-- PIN Indicator Dots -->
-      <div class="pin-dots-container" id="pinDotsContainer">
+      <div class="pin-dots-container" id="pinDotsContainer" aria-label="PIN entry status">
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
       </div>
 
-      <!-- Native Touch Numpad -->
+      <!-- Ergonomic Native 3x4 Touch Numpad -->
       <div class="pin-keypad">
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('1')">1</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('2')">2</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('3')">3</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('4')">4</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('5')">5</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('6')">6</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
-        <div class="keypad-spacer" style="visibility:hidden; pointer-events:none;" aria-hidden="true"></div>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
-        <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('1')" aria-label="1">
+          <span class="keypad-num">1</span>
+          <span class="keypad-sub">&nbsp;</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('2')" aria-label="2 ABC">
+          <span class="keypad-num">2</span>
+          <span class="keypad-sub">ABC</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('3')" aria-label="3 DEF">
+          <span class="keypad-num">3</span>
+          <span class="keypad-sub">DEF</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('4')" aria-label="4 GHI">
+          <span class="keypad-num">4</span>
+          <span class="keypad-sub">GHI</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('5')" aria-label="5 JKL">
+          <span class="keypad-num">5</span>
+          <span class="keypad-sub">JKL</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('6')" aria-label="6 MNO">
+          <span class="keypad-num">6</span>
+          <span class="keypad-sub">MNO</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('7')" aria-label="7 PQRS">
+          <span class="keypad-num">7</span>
+          <span class="keypad-sub">PQRS</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('8')" aria-label="8 TUV">
+          <span class="keypad-num">8</span>
+          <span class="keypad-sub">TUV</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('9')" aria-label="9 WXYZ">
+          <span class="keypad-num">9</span>
+          <span class="keypad-sub">WXYZ</span>
+        </button>
+        <div class="keypad-spacer" aria-hidden="true"></div>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('0')" aria-label="0 plus">
+          <span class="keypad-num">0</span>
+          <span class="keypad-sub">+</span>
+        </button>
+        <button type="button" class="keypad-btn action-btn delete-btn" onclick="deletePinDigit()" title="Delete" aria-label="Delete last digit">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+            <line x1="18" y1="9" x2="12" y2="15"/>
+            <line x1="12" y1="9" x2="18" y2="15"/>
+          </svg>
+        </button>
       </div>
 
-      <!-- Tier-1 Quick Log Action (Allows fast expense logging with zero passcode friction) -->
+      <!-- Tier-1 Quick Log Action -->
       <button type="button" class="btn-quick-log-trigger" onclick="openQuickLogModal()">
-        ⚡ Quick Log Spend (No Passcode Needed)
+        <span class="quick-log-icon">⚡</span>
+        <span>Quick Log Spend <span class="quick-log-sub">(No Passcode Needed)</span></span>
       </button>
     </div>
   </div>
@@ -67,8 +117,11 @@
     <div class="container header-content">
       <div class="logo-area">
         <div class="logo-icon"><i data-lucide="wallet-cards" style="width:20px;height:20px;color:#818cf8;"></i></div>
-        <div>
-          <div class="logo-title">Dhruv Gori | Financial OS</div>
+        <div class="logo-text-block">
+          <div class="logo-title-row">
+            <span class="logo-title">Dhruv OS</span>
+            <span id="syncStatusBadge" class="badge header-sync-badge" onclick="openSettingsModal()" title="Database Connection Status (Click for Settings)">● Local Mode</span>
+          </div>
           <div class="logo-subtitle">Real-time Budget, Bank Balances & Automated Expense Tracker</div>
         </div>
       </div>
@@ -115,17 +168,14 @@
         </button>
 
         <!-- Supabase Settings Button -->
-        <button class="btn btn-icon" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
+        <button class="btn btn-icon desktop-btn" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
           <i data-lucide="settings" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Theme Toggle (Auto / Dark / Light) -->
-        <button class="btn btn-icon" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
+        <button class="btn btn-icon desktop-btn" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
           <i data-lucide="sun-moon" style="width:16px;height:16px;"></i>
         </button>
-
-        <!-- Status Badge -->
-        <span id="syncStatusBadge" class="badge">● Local Mode</span>
       </div>
     </div>
   </header>
@@ -493,36 +543,38 @@
           </div>
 
           <!-- Filters Bar -->
-          <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
-            <input type="text" id="txSearchInput" class="form-input" style="max-width: 280px;" placeholder="🔍 Search description, category..." oninput="renderTransactionsTable()">
+          <div class="tx-filters-bar">
+            <input type="text" id="txSearchInput" class="form-input tx-search-box" placeholder="🔍 Search description, category, account..." oninput="renderTransactionsTable()">
             
-            <select id="txTypeFilter" class="form-select" style="max-width: 160px;" onchange="renderTransactionsTable()">
-              <option value="all">All Types</option>
-              <option value="Expense">Expense</option>
-              <option value="Income">Income</option>
-              <option value="Debt">Debt</option>
-              <option value="Savings">Savings</option>
-              <option value="Transfer">Transfer</option>
-            </select>
+            <div class="tx-filters-selects">
+              <select id="txTypeFilter" class="form-select" onchange="renderTransactionsTable()">
+                <option value="all">All Types</option>
+                <option value="Expense">Expense</option>
+                <option value="Income">Income</option>
+                <option value="Debt">Debt</option>
+                <option value="Savings">Savings</option>
+                <option value="Transfer">Transfer</option>
+              </select>
 
-            <select id="txAccountFilter" class="form-select" style="max-width: 220px;" onchange="renderTransactionsTable()">
-              <option value="all">All Accounts</option>
-              <option value="HDFC Bank Account">HDFC Bank Account</option>
-              <option value="Kotak Bank Account">Kotak Bank Account</option>
-              <option value="ICICI - Amazon Pay Credit Card">ICICI - Amazon Pay</option>
-              <option value="ICICI - Coral Credit Card">ICICI - Coral</option>
-              <option value="American Express Credit Card">American Express</option>
-              <option value="Roar CC Rupay">Roar CC Rupay</option>
-              <option value="Cash">Cash</option>
-            </select>
+              <select id="txAccountFilter" class="form-select" onchange="renderTransactionsTable()">
+                <option value="all">All Accounts</option>
+                <option value="HDFC Bank Account">HDFC Bank Account</option>
+                <option value="Kotak Bank Account">Kotak Bank Account</option>
+                <option value="ICICI - Amazon Pay Credit Card">ICICI - Amazon Pay</option>
+                <option value="ICICI - Coral Credit Card">ICICI - Coral</option>
+                <option value="American Express Credit Card">American Express</option>
+                <option value="Roar CC Rupay">Roar CC Rupay</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
 
-            <button class="btn btn-secondary" onclick="openAddTransactionModal()" style="margin-left: auto;">
+            <button class="btn btn-secondary desktop-btn" onclick="openAddTransactionModal()" style="margin-left: auto;">
               + New Entry
             </button>
           </div>
 
-          <!-- Transactions Table -->
-          <div class="table-responsive">
+          <!-- Desktop Transactions Table -->
+          <div class="table-responsive desktop-tx-table">
             <table class="data-table">
               <thead>
                 <tr>
@@ -538,6 +590,9 @@
               <tbody id="transactionsTableBody"></tbody>
             </table>
           </div>
+
+          <!-- Mobile Transactions Card List (< 768px) -->
+          <div class="mobile-tx-list" id="mobileTransactionsList"></div>
         </div>
       </section>
 
@@ -1324,27 +1379,28 @@
       <span class="dock-icon"><i data-lucide="layout-dashboard"></i></span>
       <span class="dock-label">Home</span>
     </button>
+    <button class="dock-item" data-tab="transactions" onclick="switchMobileTab('transactions')">
+      <span class="dock-icon"><i data-lucide="receipt"></i></span>
+      <span class="dock-label">Spends</span>
+    </button>
+    <div class="dock-fab-wrapper">
+      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction" aria-label="Add Transaction">
+        <i data-lucide="plus"></i>
+      </button>
+    </div>
     <button class="dock-item" data-tab="bank-ledgers" onclick="switchMobileTab('bank-ledgers')">
       <span class="dock-icon"><i data-lucide="landmark"></i></span>
       <span class="dock-label">Ledgers</span>
     </button>
-    <div class="dock-fab-wrapper">
-      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction"><i data-lucide="plus"></i></button>
-    </div>
     <button class="dock-item" data-tab="cards-emis" onclick="switchMobileTab('cards-emis')">
       <span class="dock-icon"><i data-lucide="credit-card"></i></span>
       <span class="dock-label">Cards</span>
-    </button>
-    <button class="dock-item" data-tab="review" onclick="switchMobileTab('review')">
-      <span class="dock-icon"><i data-lucide="inbox"></i></span>
-      <span class="dock-label">Inbox</span>
-      <span id="dockReviewBadge" class="dock-badge" style="display:none;">0</span>
     </button>
   </nav>
 
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Core Controller Script -->
-  <script src="app.js?v=20261001_v6"></script>
+  <script src="app.js?v=20261001_v7"></script>
 </body>
 </html>

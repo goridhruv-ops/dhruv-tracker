@@ -1297,10 +1297,11 @@ function renderCreditCardTracker() {
   }
 }
 
-// Transactions Table
+// Transactions Table & Mobile Card View
 function renderTransactionsTable() {
   const tbody = document.getElementById("transactionsTableBody");
-  if (!tbody) return;
+  const mobileList = document.getElementById("mobileTransactionsList");
+  if (!tbody && !mobileList) return;
 
   const search = (document.getElementById("txSearchInput")?.value || "").toLowerCase();
   const typeFilter = document.getElementById("txTypeFilter")?.value || "all";
@@ -1318,36 +1319,107 @@ function renderTransactionsTable() {
     );
   }
 
-  document.getElementById("txCountBadge").textContent = `${txs.length} Transactions`;
+  const countBadge = document.getElementById("txCountBadge");
+  if (countBadge) countBadge.textContent = `${txs.length} Transactions`;
 
   if (txs.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-          ✨ Fresh start active since <strong>${State.booksStartDate}</strong>! No transactions recorded yet.<br>
-          Click <strong>+ Add Transaction</strong> or let your Gmail script capture your first online transaction.
-        </td>
-      </tr>
-    `;
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+            ✨ Fresh start active since <strong>${State.booksStartDate}</strong>! No transactions recorded yet.<br>
+            Click <strong>+ Add Transaction</strong> or let your Gmail script capture your first online transaction.
+          </td>
+        </tr>
+      `;
+    }
+    if (mobileList) {
+      mobileList.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; background: var(--bg-secondary); border-radius: 16px; border: 1px dashed var(--border-color); color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
+          <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">No Transactions Found</div>
+          <div style="font-size: 0.8rem; line-height: 1.4;">Active since ${State.booksStartDate}. Tap "+ Add Transaction" below to log a spend.</div>
+        </div>
+      `;
+    }
     return;
   }
 
-  tbody.innerHTML = txs.map(t => `
-    <tr>
-      <td style="white-space: nowrap;">${t.date}</td>
-      <td><span class="type-pill ${t.transaction_type}">${t.transaction_type}</span></td>
-      <td><span class="category-pill">${t.category}</span></td>
-      <td style="font-weight: 700; ${t.transaction_type === 'Income' ? 'color: var(--income);' : ''}">
-        ${t.transaction_type === 'Income' ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}
-      </td>
-      <td>${t.description || '-'}</td>
-      <td style="font-size: 0.8rem; color: var(--text-secondary);">${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}</td>
-      <td style="white-space: nowrap;">
-        <button class="btn btn-icon" onclick="editTransaction('${t.id}')" title="Edit">✏️</button>
-        <button class="btn btn-icon" onclick="deleteTransaction('${t.id}')" title="Delete">🗑️</button>
-      </td>
-    </tr>
-  `).join("");
+  // Category Icon resolver
+  const getCategoryIcon = (category, type) => {
+    const c = (category || "").toLowerCase();
+    if (c.includes("food") || c.includes("dining") || c.includes("swiggy") || c.includes("zomato")) return "🍔";
+    if (c.includes("grocery") || c.includes("blinkit") || c.includes("zepto") || c.includes("instamart")) return "🛒";
+    if (c.includes("fuel") || c.includes("petrol") || c.includes("diesel")) return "⛽";
+    if (c.includes("travel") || c.includes("flight") || c.includes("train") || c.includes("uber") || c.includes("ola")) return "🚕";
+    if (c.includes("shopping") || c.includes("amazon") || c.includes("flipkart") || c.includes("myntra")) return "🛍️";
+    if (c.includes("bill") || c.includes("electricity") || c.includes("wifi") || c.includes("recharge")) return "💡";
+    if (c.includes("salary") || c.includes("bonus") || type === "Income") return "💵";
+    if (c.includes("invest") || c.includes("stock") || c.includes("mutual") || c.includes("zerodha") || type === "Savings") return "📈";
+    if (c.includes("emi") || c.includes("loan") || type === "Debt") return "💳";
+    if (type === "Transfer") return "🔄";
+    if (c.includes("health") || c.includes("med") || c.includes("pharmacy")) return "💊";
+    return "🏷️";
+  };
+
+  // 1. Desktop Table
+  if (tbody) {
+    tbody.innerHTML = txs.map(t => `
+      <tr>
+        <td style="white-space: nowrap;">${t.date}</td>
+        <td><span class="type-pill ${t.transaction_type}">${t.transaction_type}</span></td>
+        <td><span class="category-pill">${t.category}</span></td>
+        <td style="font-weight: 700; ${t.transaction_type === 'Income' ? 'color: var(--income);' : ''}">
+          ${t.transaction_type === 'Income' ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}
+        </td>
+        <td>${t.description || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-secondary);">${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}</td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-icon" onclick="editTransaction('${t.id}')" title="Edit">✏️</button>
+          <button class="btn btn-icon" onclick="deleteTransaction('${t.id}')" title="Delete">🗑️</button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  // 2. Mobile Responsive Card List (< 768px)
+  if (mobileList) {
+    mobileList.innerHTML = txs.map(t => {
+      const isIncome = t.transaction_type === "Income";
+      const icon = getCategoryIcon(t.category, t.transaction_type);
+      const amtStr = `${isIncome ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}`;
+      const descStr = t.description || t.category || "Untitled Transaction";
+      const accStr = `${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}`;
+      const typeLower = (t.transaction_type || "expense").toLowerCase();
+
+      return `
+        <div class="mobile-tx-card" onclick="editTransaction('${t.id}')">
+          <div class="tx-card-icon-wrapper type-${typeLower}">
+            <span>${icon}</span>
+          </div>
+          <div class="tx-card-info">
+            <div class="tx-card-title">${descStr}</div>
+            <div class="tx-card-meta">
+              <span class="tx-card-date">${t.date}</span>
+              <span class="tx-card-dot">•</span>
+              <span class="tx-card-account-pill">${accStr}</span>
+            </div>
+          </div>
+          <div class="tx-card-value-col">
+            <div class="tx-card-amount ${isIncome ? 'val-income' : 'val-expense'}">${amtStr}</div>
+            <span class="tx-card-cat-badge">${t.category}</span>
+          </div>
+          <div class="tx-card-actions" onclick="event.stopPropagation()">
+            <button class="btn-tx-action" onclick="deleteTransaction('${t.id}')" title="Delete" aria-label="Delete">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 }
 
 // Review Inbox
@@ -4342,10 +4414,20 @@ function switchMobileTab(tabId) {
     d.classList.toggle("active", d.getAttribute("data-tab") === tabId);
   });
   document.querySelectorAll(".nav-tab").forEach(t => {
-    t.classList.toggle("active", t.getAttribute("data-tab") === tabId);
+    const isActive = t.getAttribute("data-tab") === tabId;
+    t.classList.toggle("active", isActive);
+    if (isActive) {
+      t.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
   });
   document.querySelectorAll(".tab-pane").forEach(p => {
     p.classList.toggle("active", p.id === tabId);
   });
+  if (tabId === "analytics") {
+    setTimeout(renderCharts, 100);
+  }
+  if (window.lucide) {
+    lucide.createIcons();
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

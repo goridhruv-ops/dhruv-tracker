@@ -76,13 +76,14 @@
 }
 
 [data-theme="dark"] {
-  --bg-primary: #07080b;
-  --bg-secondary: #0d1017;
-  --bg-tertiary: #141822;
-  --bg-glass: rgba(13, 16, 23, 0.88);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --edge-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  --bg-primary: #080b11;
+  --bg-secondary: #0f1420;
+  --bg-tertiary: #171e2e;
+  --bg-glass: rgba(15, 20, 32, 0.85);
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --edge-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
   
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
@@ -99,35 +100,35 @@
   --kotak-bg: rgba(251, 113, 133, 0.15);
 
   --income: #10b981;
-  --income-glow: rgba(16, 185, 129, 0.15);
+  --income-glow: rgba(16, 185, 129, 0.2);
   --income-bg: rgba(16, 185, 129, 0.12);
-  --income-border: rgba(16, 185, 129, 0.25);
+  --income-border: rgba(16, 185, 129, 0.28);
   
   --expense: #f43f5e;
-  --expense-glow: rgba(244, 63, 94, 0.15);
+  --expense-glow: rgba(244, 63, 94, 0.2);
   --expense-bg: rgba(244, 63, 94, 0.12);
-  --expense-border: rgba(244, 63, 94, 0.25);
+  --expense-border: rgba(244, 63, 94, 0.28);
   
   --debt: #f43f5e;
-  --debt-bg: rgba(244, 63, 94, 0.15);
+  --debt-bg: rgba(244, 63, 94, 0.14);
   --debt-border: rgba(244, 63, 94, 0.3);
   
   --savings: #0ea5e9;
-  --savings-glow: rgba(14, 165, 233, 0.15);
+  --savings-glow: rgba(14, 165, 233, 0.2);
   --savings-bg: rgba(14, 165, 233, 0.12);
-  --savings-border: rgba(14, 165, 233, 0.25);
+  --savings-border: rgba(14, 165, 233, 0.28);
 
-  --transfer: #a78bfa;
-  --transfer-bg: rgba(139, 92, 246, 0.15);
+  --transfer: #8b5cf6;
+  --transfer-bg: rgba(139, 92, 246, 0.14);
   --transfer-border: rgba(139, 92, 246, 0.3);
 
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.12);
-  --warning-glow: rgba(245, 158, 11, 0.15);
+  --warning-glow: rgba(245, 158, 11, 0.2);
   
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.5);
 }
 
 /* Lucide Vector Micro-Icons */
@@ -261,6 +262,12 @@ header.app-header {
   border: 1px solid transparent;
   transition: var(--transition);
   text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
@@ -1702,20 +1709,26 @@ table.data-table tbody tr:last-child td {
 }
 
 /* ==============================================================================
-   DUAL-TIER SECURITY LOCK SCREEN OVERLAY
+   DUAL-TIER SECURITY LOCK SCREEN OVERLAY - APPLE PAY / REVOLUT FINTECH VAULT
    ============================================================================== */
 .security-lock-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: rgba(9, 13, 22, 0.95);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
+  z-index: 10000;
+  background: radial-gradient(circle at 50% 16%, #111728 0%, #090d16 55%, #05070b 100%);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  max-height: 100dvh;
+  width: 100vw;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
   color: #ffffff;
 }
 
@@ -1725,7 +1738,16 @@ table.data-table tbody tr:last-child td {
 
 .lock-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin: auto;
+  gap: 1.25rem;
+}
+
+.lock-header-section {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1733,30 +1755,60 @@ table.data-table tbody tr:last-child td {
 }
 
 .lock-icon-badge {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(16, 185, 129, 0.12));
+  border: 1px solid rgba(99, 102, 241, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
-  margin-bottom: 1.25rem;
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
+  margin-bottom: 0.85rem;
+  box-shadow: 0 0 28px rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .lock-title {
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: #f8fafc;
   margin-bottom: 0.25rem;
 }
 
 .lock-subtitle {
   font-size: 0.85rem;
   color: var(--text-muted);
-  margin-bottom: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.lock-cloud-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 4px;
+}
+
+.status-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
 }
 
 /* PIN Indicator Dots */
@@ -1765,111 +1817,176 @@ table.data-table tbody tr:last-child td {
   align-items: center;
   justify-content: center;
   gap: 1.25rem;
-  margin-bottom: 2rem;
+  margin: 0.25rem 0;
 }
 
 .pin-dot {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
   background: transparent;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .pin-dot.filled {
-  background: var(--primary);
-  border-color: var(--primary);
-  box-shadow: 0 0 12px var(--primary-glow);
+  background: #6366f1;
+  border-color: #818cf8;
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.7);
   transform: scale(1.15);
 }
 
 .pin-dot.error {
-  background: var(--expense);
-  border-color: var(--expense);
-  animation: pin-shake 0.3s ease;
+  background: #f43f5e;
+  border-color: #f43f5e;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.7);
+  animation: pinShake 0.38s ease;
 }
 
-@keyframes pin-shake {
+@keyframes pinShake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
 }
 
-/* Native Touch Numpad */
+/* Native Ergonomic 3x4 Touch Numpad */
 .pin-keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 0.85rem;
   width: 100%;
   max-width: 280px;
-  margin-bottom: 1.75rem;
+  justify-items: center;
 }
 
 .keypad-btn {
-  height: 64px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #ffffff;
-  font-size: 1.45rem;
-  font-weight: 600;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.keypad-btn > * {
+  pointer-events: none;
+}
+
+.keypad-num {
+  font-size: 1.55rem;
+  font-weight: 500;
+  line-height: 1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.keypad-sub {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.42);
+  margin-top: 2px;
+  line-height: 1;
 }
 
 .keypad-btn:active {
-  background: rgba(99, 102, 241, 0.35);
-  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.32);
+  border-color: rgba(99, 102, 241, 0.6);
   transform: scale(0.92);
-}
-
-.keypad-spacer {
-  height: 64px;
-  visibility: hidden;
-  pointer-events: none;
+  box-shadow: 0 0 18px rgba(99, 102, 241, 0.35);
 }
 
 .keypad-btn.action-btn {
   background: transparent;
   border: none;
-  font-size: 1.25rem;
-  color: var(--text-secondary);
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .keypad-btn.action-btn:active {
-  background: rgba(255, 255, 255, 0.1);
-  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transform: scale(0.92);
 }
 
-/* Prominent Tier-1 Quick Log Button */
+.keypad-spacer {
+  width: 68px;
+  height: 68px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Quick Log Spend Trigger Pill */
 .btn-quick-log-trigger {
   width: 100%;
-  padding: 0.85rem 1.25rem;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(56, 189, 248, 0.15));
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  max-width: 290px;
+  padding: 0.75rem 1.15rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   color: #34d399;
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.btn-quick-log-trigger:hover, .btn-quick-log-trigger:active {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(56, 189, 248, 0.25));
-  border-color: #34d399;
-  transform: translateY(-2px);
+.btn-quick-log-trigger .quick-log-sub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.btn-quick-log-trigger:active {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10b981;
+  transform: scale(0.96);
+}
+
+@media (max-height: 680px) {
+  .lock-card {
+    gap: 0.75rem;
+  }
+  .lock-icon-badge {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0.4rem;
+  }
+  .lock-title {
+    font-size: 1.15rem;
+  }
+  .keypad-btn {
+    width: 58px;
+    height: 58px;
+  }
+  .keypad-spacer {
+    width: 58px;
+    height: 58px;
+  }
+  .keypad-num {
+    font-size: 1.35rem;
+  }
+  .pin-keypad {
+    gap: 0.55rem;
+  }
 }
 
 /* ==============================================================================
@@ -2158,51 +2275,145 @@ table.data-table tbody tr:last-child td {
 }
 
 /* ==============================================================================
+   TRANSACTIONS LEDGER: DESKTOP & MOBILE CARD VIEWS
+   ============================================================================== */
+.tx-filters-bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.tx-search-box {
+  max-width: 280px;
+}
+
+.tx-filters-selects {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.mobile-tx-list {
+  display: none;
+}
+
+/* ==============================================================================
    MOBILE BOTTOM NAVIGATION DOCK (< 768px)
    ============================================================================== */
 .mobile-bottom-dock {
   display: none;
 }
 
+/* ==============================================================================
+   RESPONSIVE DESIGN & MOBILE UX LAWS (FITTS, HICK, MILLER, JAKOB)
+   ============================================================================== */
 @media (max-width: 768px) {
-  /* Native iOS Bottom Pull-Sheet Modal */
-  #quickLogModal.modal-overlay,
-  .modal-bottom-sheet.modal-overlay {
+  /* ----------------------------------------------------------------------------
+     1. FITTS'S & JAKOB'S LAWS: UNIVERSAL NATIVE BOTTOM-SHEET MODALS
+     ---------------------------------------------------------------------------- */
+  .modal-overlay {
     padding: 0 !important;
     align-items: flex-end !important;
     justify-content: flex-end !important;
+    background: rgba(4, 7, 12, 0.75) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
   }
 
-  #quickLogModal .modal-content,
-  .modal-bottom-sheet .modal-content {
+  .modal-content {
     position: fixed !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    border-radius: 28px 28px 0 0 !important;
+    border-radius: 24px 24px 0 0 !important;
     margin: 0 !important;
     background: var(--bg-secondary) !important;
     border: 1px solid var(--border-color) !important;
     border-bottom: none !important;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.6) !important;
     animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    max-height: 88vh !important;
-    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    max-height: 90dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
     box-sizing: border-box !important;
   }
 
-  @keyframes sheetSlideUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: translateY(0);
-    }
+  .modal-content::before {
+    content: '' !important;
+    display: block !important;
+    width: 38px !important;
+    height: 4px !important;
+    border-radius: 99px !important;
+    background: rgba(255, 255, 255, 0.22) !important;
+    margin: 10px auto 4px auto !important;
+    flex-shrink: 0 !important;
   }
 
-  /* Viewport lock & compact container */
+  .modal-header {
+    padding: 0.75rem 1.25rem 0.5rem 1.25rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .modal-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 1 auto !important;
+    padding: 1rem 1.25rem !important;
+  }
+
+  .modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: var(--bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding: 0.85rem 1.25rem !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+    z-index: 10 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .modal-footer .btn {
+    flex: 1 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    border-radius: 12px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Prevent iOS Auto-Zoom on form controls (MANDATORY >= 16px font-size) */
+  .form-input,
+  .form-select,
+  .form-textarea,
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    min-height: 46px !important;
+    padding: 0.65rem 0.85rem !important;
+    border-radius: 12px !important;
+  }
+
+  @keyframes sheetSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* ----------------------------------------------------------------------------
+     2. VIEWPORT LOCK & CONTAINER PADDING
+     ---------------------------------------------------------------------------- */
   .container {
     padding: 0 0.85rem !important;
     box-sizing: border-box !important;
@@ -2211,80 +2422,174 @@ table.data-table tbody tr:last-child td {
     max-width: 100% !important;
   }
 
-  /* Give main content clearance for fixed bottom dock */
   main.main-content {
-    padding-bottom: 84px !important;
+    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
     width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
   }
 
-  /* Header Optimization: Hide subtitle & sync badge to eliminate mobile wrap/wiggle */
-  .logo-subtitle {
-    display: none !important;
-  }
-
-  #syncStatusBadge {
-    display: none !important;
+  /* ----------------------------------------------------------------------------
+     3. HICK'S LAW: STREAMLINED MOBILE HEADER (360px - 420px SAFE)
+     ---------------------------------------------------------------------------- */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 800;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .header-content {
-    gap: 0.5rem !important;
-    padding: 0.15rem 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.4rem !important;
+    padding: 0.45rem 0.75rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
   .logo-area {
-    gap: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
   }
 
   .logo-icon {
-    width: 34px !important;
-    height: 34px !important;
-    font-size: 1.1rem !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 8px !important;
+  }
+
+  .logo-text-block {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+  }
+
+  .logo-title-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    min-width: 0 !important;
   }
 
   .logo-title {
-    font-size: 1rem !important;
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
-  /* Size header icon buttons to 34x34px */
-  .header-actions {
-    gap: 0.35rem !important;
-  }
-
-  .header-actions .btn-icon {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    padding: 0 !important;
+  .header-sync-badge {
+    font-size: 0.65rem !important;
+    padding: 2px 7px !important;
+    border-radius: 999px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    font-size: 0.9rem !important;
-    box-sizing: border-box !important;
   }
 
-  .month-selector-wrapper select {
-    padding: 0.35rem 0.5rem !important;
-    font-size: 0.8rem !important;
-    max-width: 130px !important;
+  .logo-subtitle {
+    display: none !important;
   }
 
-  /* Simplify top header on mobile: hide desktop action buttons */
+  .header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    flex-shrink: 0 !important;
+  }
+
   .header-actions .desktop-btn {
     display: none !important;
   }
 
-  /* Hide the 9 scrolling horizontal tabs on mobile */
+  .month-selector-wrapper select {
+    max-width: 98px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 0.45rem !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    border-radius: 999px !important;
+  }
+
+  .header-actions .btn-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* ----------------------------------------------------------------------------
+     4. JAKOB'S LAW: NATIVE iOS HORIZONTAL SCROLLABLE PILL BAR FOR ALL MODULES
+     ---------------------------------------------------------------------------- */
   nav.nav-tabs {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    padding: 4px 2px 10px 2px !important;
+    margin-bottom: 0.85rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  nav.nav-tabs::-webkit-scrollbar {
     display: none !important;
   }
 
-  /* Show fixed bottom dock */
+  .nav-tab {
+    flex-shrink: 0 !important;
+    padding: 6px 14px !important;
+    border-radius: 9999px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  .nav-tab:active {
+    transform: scale(0.96) !important;
+  }
+
+  .nav-tab.active {
+    background: rgba(99, 102, 241, 0.16) !important;
+    border-color: rgba(99, 102, 241, 0.45) !important;
+    color: #818cf8 !important;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.25) !important;
+  }
+
+  /* ----------------------------------------------------------------------------
+     5. FITTS'S LAW: FIXED MOBILE BOTTOM NAVIGATION DOCK (PRIMARY THUMB ZONE)
+     ---------------------------------------------------------------------------- */
   .mobile-bottom-dock {
     display: flex;
     position: fixed;
@@ -2294,16 +2599,16 @@ table.data-table tbody tr:last-child td {
     width: 100% !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
-    height: 64px;
-    background: var(--bg-glass);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border-color);
+    height: calc(62px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(10, 14, 23, 0.90);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     justify-content: space-around;
     align-items: center;
-    z-index: 500;
-    padding-bottom: env(safe-area-inset-bottom);
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08);
+    z-index: 999;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
   }
 
   .dock-item {
@@ -2320,9 +2625,15 @@ table.data-table tbody tr:last-child td {
     cursor: pointer;
     position: relative;
     padding: 0.35rem 0.5rem;
+    min-width: 48px;
+    min-height: 48px;
     border-radius: var(--radius-sm);
-    transition: color 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
+  }
+
+  .dock-item:active {
+    transform: scale(0.92);
   }
 
   .dock-item .dock-icon {
@@ -2330,6 +2641,7 @@ table.data-table tbody tr:last-child td {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .dock-item .dock-icon .lucide {
@@ -2338,11 +2650,12 @@ table.data-table tbody tr:last-child td {
   }
 
   .dock-item.active {
-    color: var(--primary);
+    color: #818cf8;
   }
 
   .dock-item.active .dock-icon {
-    transform: scale(1.1);
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
   }
 
   /* Central Floating Action Button (FAB) */
@@ -2352,18 +2665,18 @@ table.data-table tbody tr:last-child td {
   }
 
   .dock-fab {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: #ffffff;
-    border: 3px solid var(--bg-secondary);
+    border: 3px solid #0f1420;
     font-size: 1.7rem;
     font-weight: 300;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px var(--primary-glow);
+    box-shadow: 0 4px 18px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
     cursor: pointer;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
@@ -2372,41 +2685,291 @@ table.data-table tbody tr:last-child td {
   .dock-fab .lucide {
     width: 26px;
     height: 26px;
-    stroke-width: 2.25px;
+    stroke-width: 2.5px;
   }
 
   .dock-fab:active {
-    transform: scale(0.92);
+    transform: scale(0.90);
+    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.6);
   }
 
-  .dock-badge {
-    position: absolute;
-    top: 2px;
-    right: 6px;
-    background: var(--expense);
-    color: #ffffff;
-    font-size: 0.65rem;
-    font-weight: 800;
-    min-width: 16px;
-    height: 16px;
-    border-radius: 99px;
+  /* ----------------------------------------------------------------------------
+     6. MILLER'S LAW: CHUNKED 2x2 EXECUTIVE KPI GRID
+     ---------------------------------------------------------------------------- */
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+    margin-bottom: 1.25rem !important;
+    width: 100% !important;
+  }
+
+  .metric-card {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.85rem 0.75rem !important;
+    border-radius: 14px !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+  }
+
+  .metric-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .metric-label {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .metric-icon {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+  }
+
+  .metric-value {
+    font-size: 1.22rem !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums lining-nums !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
+  }
+
+  .metric-sub {
+    font-size: 0.65rem !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+  }
+
+  /* ----------------------------------------------------------------------------
+     7. AESTHETIC-USABILITY EFFECT: BESPOKE MOBILE TRANSACTION CARDS
+     ---------------------------------------------------------------------------- */
+  .tx-filters-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .tx-search-box {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .tx-filters-selects {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .desktop-tx-table {
+    display: none !important;
+  }
+
+  .mobile-tx-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .mobile-tx-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .mobile-tx-card:active {
+    transform: scale(0.98);
+    background: var(--bg-tertiary);
+  }
+
+  .tx-card-icon-wrapper {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
-    border: 2px solid var(--bg-secondary);
+    font-size: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* Full-width constraints & single column layouts on Mobile */
+  .tx-card-icon-wrapper.type-income {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .tx-card-icon-wrapper.type-expense {
+    background: rgba(244, 63, 94, 0.12);
+    border-color: rgba(244, 63, 94, 0.25);
+  }
+
+  .tx-card-icon-wrapper.type-debt {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.35);
+  }
+
+  .tx-card-icon-wrapper.type-savings {
+    background: rgba(14, 165, 233, 0.15);
+    border-color: rgba(14, 165, 233, 0.3);
+  }
+
+  .tx-card-icon-wrapper.type-transfer {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+
+  .tx-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .tx-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+  }
+
+  .tx-card-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tx-card-account-pill {
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+
+  .tx-card-value-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .tx-card-amount {
+    font-size: 0.98rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums lining-nums;
+    line-height: 1.2;
+  }
+
+  .tx-card-amount.val-income {
+    color: var(--income);
+  }
+
+  .tx-card-amount.val-expense {
+    color: var(--text-primary);
+  }
+
+  .tx-card-cat-badge {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    padding: 1px 6px;
+    border-radius: 4px;
+    max-width: 90px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tx-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .btn-tx-action {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-tx-action:active {
+    background: rgba(244, 63, 94, 0.15);
+    color: var(--expense);
+    border-color: rgba(244, 63, 94, 0.3);
+  }
+
+  /* ----------------------------------------------------------------------------
+     8. CAROUSELS, CARDS & SINGLE COLUMN CONSTRAINTS
+     ---------------------------------------------------------------------------- */
   .tactile-card,
   .card-deck-grid,
-  .metrics-grid,
   .person-ledgers-grid,
   .person-card {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
     min-width: 0 !important;
+  }
+
+  .card-deck-grid,
+  .person-ledgers-grid {
+    grid-template-columns: 1fr !important;
   }
 
   /* Mobile Swipe Carousel for Bank Balances */
@@ -2439,59 +3002,42 @@ table.data-table tbody tr:last-child td {
     margin-bottom: 0 !important;
   }
 
-  .card-deck-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .person-ledgers-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.65rem !important;
-  }
-  .metric-card {
-    min-width: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-  .metric-value {
-    font-size: 1.25rem !important;
+  .card-section {
+    padding: 1rem 0.85rem !important;
+    border-radius: 16px !important;
+    margin-bottom: 1rem !important;
   }
 }
 
-@media (max-width: 480px) {
+/* ----------------------------------------------------------------------------
+   COMPACT MOBILE SCREENS (< 400px)
+   ---------------------------------------------------------------------------- */
+@media (max-width: 400px) {
   .container {
-    padding: 0 0.75rem !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    padding: 0 0.65rem !important;
   }
 
   .header-actions {
-    gap: 0.25rem !important;
+    gap: 0.2rem !important;
   }
 
   .month-selector-wrapper select {
-    max-width: 110px !important;
-    font-size: 0.75rem !important;
-    padding: 0.3rem 0.4rem !important;
+    max-width: 88px !important;
+    font-size: 0.72rem !important;
+    padding: 0 0.35rem !important;
   }
 
-  .tactile-card,
-  .card-deck-grid,
-  .metrics-grid,
-  .person-ledgers-grid,
-  .person-card {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    min-width: 0 !important;
+  .logo-title {
+    max-width: 70px !important;
+  }
+
+  .header-actions .btn-icon {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
   }
 
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.5rem !important;
   }
 
@@ -2500,15 +3046,15 @@ table.data-table tbody tr:last-child td {
   }
 
   .metric-value {
-    font-size: 1.1rem !important;
+    font-size: 1.12rem !important;
   }
 
   .metric-label {
-    font-size: 0.72rem !important;
+    font-size: 0.68rem !important;
   }
 
   .metric-sub {
-    font-size: 0.62rem !important;
+    font-size: 0.6rem !important;
   }
 }
 

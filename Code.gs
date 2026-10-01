@@ -10,26 +10,32 @@
  * - Unity Small Finance Bank / Rupay (Roar CC)
  * - UPI Gateways & Apps (Google Pay, PhonePe, Paytm, CRED)
  *
- * Key Overhauls & Fixes:
- * 1. Resilient Search Query:
+ * Key Overhauls & Strict Date Boundary:
+ * 1. Strict Date Boundary (>= 1st October 2026):
+ *    - Gmail search query strictly includes `after:2026/09/30` so Gmail's API never
+ *      returns old emails from 2020, 2022, 2023, 2024, or pre-October 2026.
+ *    - Fail-safe runtime guards in `parseTransactionEmail` and `parseStatementEmail`
+ *      immediately skip and discard any email dated before `2026-10-01`.
+ *    - `isStatementEmail` specifically rejects regular debit transaction alerts,
+ *      preventing card debit notifications from being misclassified as statements.
+ * 2. Resilient Search Query:
  *    - Expanded bank senders (alerts@hdfcbank.net, InstaAlerts@hdfcbank.net, alerts@kotak.com,
  *      nodereply@kotak.com, credit_cards@icicibank.com, alerts@icicibank.com,
  *      AmericanExpress@welcome.aexp.com, no-reply@paytm.com, noreply@phonepe.com,
  *      googlepay-noreply@google.com, alerts@cred.club).
  *    - Catches all Indian transaction subjects: UPI payments, "Update on your Account",
  *      "Sent Rs...", "Transaction alert for your card", "Paid successfully", etc.
- * 2. Guaranteed Delivery & Zero Accidental Lockout:
+ * 3. Guaranteed Delivery & Zero Accidental Lockout:
  *    - Never silently fails! Logs exact HTTP error status codes and response bodies.
- *    - CRITICAL FIX: Only adds the 'Tracker_Processed' label if Supabase responds with HTTP 2xx!
+ *    - Only adds the 'Tracker_Processed' label if Supabase responds with HTTP 2xx!
  *    - If Supabase fails or amount parsing fails, the email remains unlabeled so it can be retried.
- * 3. Robust HTML & Plain Text Parsing:
+ * 4. Robust HTML & Plain Text Parsing:
  *    - Sanitizes HTML tables, strips invisible formatting, decodes Indian Rupee symbols (₹, Rs, INR).
  *    - Multi-priority regex avoids mistakenly capturing account balances or available credit limits.
- * 4. Recovery & Diagnostic Tools:
- *    - testRecentEmails(): Read-only audit of the last 15 emails + Supabase ping test.
- *    - reprocessRecentEmails(hoursBack): Scans the last 72 hours without label filters to
- *      immediately recover Dhruv's 3 missed transactions!
- * 5. Idempotent Ingestion:
+ * 5. Recovery & Diagnostic Tools:
+ *    - testRecentEmails(): Read-only audit of candidate emails (>= 2026-10-01) + Supabase ping test.
+ *    - reprocessRecentEmails(hoursBack): Scans recent emails bounded by 2026-10-01 without label filters.
+ * 6. Idempotent Ingestion:
  *    - Assigns deterministic transaction IDs (e.g., "gmail_" + msg.getId()) so reprocessing
  *      never duplicates entries in Supabase.
  * ==============================================================================
@@ -39,7 +45,9 @@ var CONFIG = {
   SUPABASE_URL: "https://kvqtfigjmryxztdbkgcg.supabase.co", // Dhruv's Live Supabase Project URL
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2cXRmaWdqbXJ5eHp0ZGJrZ2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Njg2ODYsImV4cCI6MjEwNjM0NDY4Nn0.CWbm4WwvLsqZccgWaMClCJ8JxmCchLVRlaYvDEhiC1o", // Dhruv's Supabase Anon Key
   PROCESSED_LABEL: "Tracker_Processed",                 // Gmail label applied to processed emails
-  MAX_EMAILS_PER_RUN: 30                               // Process up to 30 emails per execution
+  MAX_EMAILS_PER_RUN: 30,                              // Process up to 30 emails per execution
+  MIN_DATE_BOUNDARY: "2026-10-01",                     // Strict boundary: Only entries on or after Oct 1, 2026
+  GMAIL_AFTER_FILTER: "after:2026/09/30"               // Gmail API filter for Oct 1, 2026 onwards
 };
 
 var BANK_SENDERS = [
@@ -96,7 +104,8 @@ function syncBankEmailsToSupabase() {
   }
 
   var label = getOrCreateLabel(CONFIG.PROCESSED_LABEL);
-  var query = buildSearchQuery(true); // Exclude already processed emails
+  var query = buildSearchQuery(true); // Exclude already processed emails, strictly >= 2026-10-01
+  Logger.log("Search Query: " + query);
   var threads = GmailApp.search(query, 0, CONFIG.MAX_EMAILS_PER_RUN);
   Logger.log("Found " + threads.length + " candidate email threads to process.");
 
@@ -123,6 +132,8 @@ function syncBankEmailsToSupabase() {
               threadSuccess = false;
               Logger.log("⚠️ [WARN] Failed to post card statement for: " + bill.card_name);
             }
+          } else if (!bill) {
+            Logger.log("ℹ️ [INFO] Statement skipped (pre-October 2026 or invalid date): '" + subject + "'");
           }
         } 
         // 2. Regular Transaction Alert Check
@@ -137,6 +148,8 @@ function syncBankEmailsToSupabase() {
               threadSuccess = false;
               Logger.log("❌ [ERROR] postToSupabase returned false for: " + subject);
             }
+          } else if (!tx) {
+            Logger.log("ℹ️ [INFO] Transaction skipped (pre-October 2026 or invalid date): '" + subject + "'");
           } else {
             threadSuccess = false;
             Logger.log("⚠️ [WARN] Financial keywords detected but amount could not be parsed in: '" + subject + "'. Thread will NOT be marked processed.");
@@ -152,9 +165,9 @@ function syncBankEmailsToSupabase() {
     }
 
     // CRITICAL: Only label the thread if:
-    // 1) Financial email(s) were successfully posted to Supabase, OR
+    // 1) Financial email(s) were successfully posted or legitimately skipped due to date policy, OR
     // 2) The thread contains ONLY non-financial emails (e.g. promo newsletter).
-    // If a financial email failed to parse or failed to post to Supabase, DO NOT label it!
+    // If a financial email failed to parse amount or failed to post to Supabase, DO NOT label it!
     if (!threadHasFinancials || threadSuccess) {
       threads[i].addLabel(label);
     } else {
@@ -165,11 +178,12 @@ function syncBankEmailsToSupabase() {
 }
 
 /**
- * Diagnostic & Audit Tool: Scans recent 15 emails without modifying labels + Tests Supabase Ping
+ * Diagnostic & Audit Tool: Scans recent candidate emails without modifying labels + Tests Supabase Ping
  */
 function testRecentEmails() {
   Logger.log("==================================================================");
   Logger.log("🧪 RUNNING GMAIL TO SUPABASE DIAGNOSTIC & TEST SCAN (READ-ONLY)");
+  Logger.log("   STRICT DATE BOUNDARY: " + CONFIG.MIN_DATE_BOUNDARY + " ONWARDS");
   Logger.log("==================================================================");
 
   // 1. Supabase Connection Test
@@ -199,9 +213,10 @@ function testRecentEmails() {
     }
   }
 
-  // 2. Scan Candidate Emails (Without label restriction)
-  Logger.log("\nStep 2: Scanning last 15 candidate emails in Gmail (No labels modified)...");
+  // 2. Scan Candidate Emails (Without label restriction, strictly >= 2026-10-01)
+  Logger.log("\nStep 2: Scanning candidate emails from " + CONFIG.MIN_DATE_BOUNDARY + " onwards in Gmail (No labels modified)...");
   var query = buildSearchQuery(false); // false = don't exclude Tracker_Processed
+  Logger.log("Diagnostic Search Query: " + query);
   var threads = GmailApp.search(query, 0, 15);
   Logger.log("Found " + threads.length + " candidate email threads.\n");
 
@@ -224,9 +239,14 @@ function testRecentEmails() {
 
       if (isStatementEmail(subject, clean.combined)) {
         var bill = parseStatementEmail(msg, clean);
-        Logger.log("📄 RESULT: Statement Detected!");
-        Logger.log("   Card: " + bill.card_name + " | Total Due: Rs." + bill.total_due + " | Min Due: Rs." + bill.min_due + " | Due Date: " + bill.due_date);
-        billCount++;
+        if (bill) {
+          Logger.log("📄 RESULT: Statement Detected!");
+          Logger.log("   Card: " + bill.card_name + " | Total Due: Rs." + bill.total_due + " | Min Due: Rs." + bill.min_due + " | Due Date: " + bill.due_date);
+          billCount++;
+        } else {
+          Logger.log("ℹ️ RESULT: Statement ignored (before " + CONFIG.MIN_DATE_BOUNDARY + "). Skipped.");
+          skipCount++;
+        }
       } else if (isFinancialEmail(subject, clean.combined)) {
         var tx = parseTransactionEmail(msg, clean);
         if (tx && tx.amount > 0) {
@@ -234,6 +254,9 @@ function testRecentEmails() {
           Logger.log("   Type: " + tx.transaction_type + " | Amount: Rs." + tx.amount + " | Account: " + tx.account);
           Logger.log("   Merchant: " + tx.description + " | Category: " + tx.category + " | Status: " + tx.status);
           txCount++;
+        } else if (!tx) {
+          Logger.log("ℹ️ RESULT: Transaction before " + CONFIG.MIN_DATE_BOUNDARY + ". Skipped.");
+          skipCount++;
         } else {
           Logger.log("⚠️ RESULT: Financial email detected, but amount extraction returned 0!");
           Logger.log("   Snippet: " + clean.plain.substring(0, 120).replace(/\n/g, " "));
@@ -257,11 +280,12 @@ function testRecentEmails() {
 /**
  * RECOVERY TOOL: Reprocess recent emails from the past N hours (default 72h / 3 days)
  * Ignores the 'Tracker_Processed' filter so any missed transactions are captured immediately!
+ * Strictly bounded by October 1st, 2026 onwards.
  */
 function reprocessRecentEmails(hoursBack) {
   hoursBack = hoursBack || 72; // Default to 72 hours (3 days)
   Logger.log("==================================================================");
-  Logger.log("🔄 REPROCESSING EMAILS FROM THE LAST " + hoursBack + " HOURS");
+  Logger.log("🔄 REPROCESSING EMAILS FROM THE LAST " + hoursBack + " HOURS (MIN DATE: " + CONFIG.MIN_DATE_BOUNDARY + ")");
   Logger.log("==================================================================");
 
   var isConfigValid = checkSupabaseConfig();
@@ -280,6 +304,10 @@ function reprocessRecentEmails(hoursBack) {
   Logger.log("Found " + threads.length + " candidate threads in the last " + hoursBack + " hours.");
 
   var cutoffTime = new Date(Date.now() - (hoursBack * 60 * 60 * 1000));
+  var minOctDate = new Date("2026-10-01T00:00:00");
+  if (cutoffTime < minOctDate) {
+    cutoffTime = minOctDate;
+  }
   var recoveredCount = 0;
   var statementCount = 0;
   var failedCount = 0;
@@ -291,7 +319,7 @@ function reprocessRecentEmails(hoursBack) {
 
     for (var j = 0; j < messages.length; j++) {
       var msg = messages[j];
-      if (msg.getDate() < cutoffTime) continue; // Outside requested window
+      if (msg.getDate() < cutoffTime) continue; // Outside requested window or before 2026-10-01
 
       var clean = extractCleanText(msg);
       var subject = msg.getSubject();
@@ -323,6 +351,8 @@ function reprocessRecentEmails(hoursBack) {
               failedCount++;
               Logger.log("❌ [POST FAILED] For: " + subject);
             }
+          } else if (!tx) {
+            Logger.log("ℹ️ [SKIPPED] Message date before " + CONFIG.MIN_DATE_BOUNDARY + ": " + subject);
           } else {
             threadSuccess = false;
             Logger.log("⚠️ [PARSE FAILED] Could not extract amount from: " + subject);
@@ -349,11 +379,13 @@ function reprocessRecentEmails(hoursBack) {
 
 /**
  * Builds the Gmail Search Query string
+ * STRICT REQUIREMENT: Only process emails from 1st October 2026 onwards!
  */
 function buildSearchQuery(excludeProcessed, extraFilter) {
   var senderQuery = "from:(" + BANK_SENDERS.join(" OR ") + ")";
   var subjectQuery = "subject:(" + SUBJECT_KEYWORDS.join(" OR ") + ")";
-  var query = "(" + senderQuery + " OR " + subjectQuery + ")";
+  var dateBoundary = CONFIG.GMAIL_AFTER_FILTER || "after:2026/09/30";
+  var query = dateBoundary + " (" + senderQuery + " OR " + subjectQuery + ")";
 
   if (excludeProcessed) {
     query = "(-label:" + CONFIG.PROCESSED_LABEL + ") " + query;
@@ -421,6 +453,19 @@ function isFinancialEmail(subject, text) {
  * Detect if message is a Credit Card Statement or Bill Due notification
  */
 function isStatementEmail(subject, body) {
+  var subj = (subject || "").toLowerCase();
+
+  // Guard: If subject clearly indicates a regular debit/transaction alert, it is NOT a statement
+  if (subj.indexOf("transaction alert") !== -1 ||
+      subj.indexOf("debited") !== -1 ||
+      subj.indexOf("spent") !== -1 ||
+      subj.indexOf("sent rs") !== -1 ||
+      subj.indexOf("paid to") !== -1 ||
+      subj.indexOf("paid successfully") !== -1 ||
+      subj.indexOf("upi txn") !== -1) {
+    return false;
+  }
+
   var text = (subject + " " + body).toLowerCase();
   var isStatement = (
     text.indexOf("statement") !== -1 ||
@@ -486,6 +531,7 @@ function extractCleanText(msg) {
 
 /**
  * Parse regular transaction email
+ * STRICT REQUIREMENT: Only process emails from 1st October 2026 onwards!
  */
 function parseTransactionEmail(msg, cleanData) {
   cleanData = cleanData || extractCleanText(msg);
@@ -493,6 +539,12 @@ function parseTransactionEmail(msg, cleanData) {
   var subject = cleanData.subject;
   var fullText = cleanData.combined;
   var date = formatDate(msg.getDate());
+
+  // STRICT GUARD: Skip emails before 1st October 2026
+  if (date < "2026-10-01") {
+    Logger.log("Skipping email before 2026-10-01: " + date);
+    return null;
+  }
 
   var amount = extractAmount(subject, fullText);
   if (!amount || amount <= 0) return null;
@@ -505,7 +557,7 @@ function parseTransactionEmail(msg, cleanData) {
   // If internal transfer / ATM cash withdrawal
   var toAccount = classification.to_account || null;
 
-  return {
+  var tx = {
     id: "gmail_" + msg.getId(), // Deterministic ID prevents duplicate rows on re-runs
     date: date,
     transaction_type: classification.type,
@@ -517,10 +569,19 @@ function parseTransactionEmail(msg, cleanData) {
     status: classification.isKnown ? "approved" : "pending_review", // Hybrid auto-approval
     source: "gmail"
   };
+
+  // Secondary strict guard
+  if (tx.date < "2026-10-01") {
+    Logger.log("Skipping email before 2026-10-01: " + tx.date);
+    return null;
+  }
+
+  return tx;
 }
 
 /**
  * Parse Credit Card Statement Email to extract Due Date, Total Due, Min Due
+ * STRICT REQUIREMENT: Only consider statements generated on or after 2026-10-01
  */
 function parseStatementEmail(msg, cleanData) {
   cleanData = cleanData || extractCleanText(msg);
@@ -528,6 +589,12 @@ function parseStatementEmail(msg, cleanData) {
   var subject = cleanData.subject;
   var fullText = cleanData.combined;
   var date = formatDate(msg.getDate());
+
+  // STRICT GUARD: Only consider statements generated on or after 2026-10-01
+  if (date < "2026-10-01") {
+    Logger.log("Skipping statement before 2026-10-01: " + date);
+    return null;
+  }
 
   var cardName = detectAccount(from, subject, fullText);
 
@@ -899,6 +966,12 @@ function postToSupabase(transaction) {
     return false;
   }
 
+  // STRICT FINAL GUARD: Double check transaction date
+  if (transaction.date < CONFIG.MIN_DATE_BOUNDARY) {
+    Logger.log("❌ [DATE VIOLATION] Attempted to post transaction dated before " + CONFIG.MIN_DATE_BOUNDARY + ": " + transaction.date);
+    return false;
+  }
+
   var url = CONFIG.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/transactions?on_conflict=id";
   var options = {
     method: "POST",
@@ -936,6 +1009,12 @@ function postToSupabase(transaction) {
 function postCardBillToSupabase(bill) {
   if (!checkSupabaseConfig()) {
     Logger.log("❌ [CONFIG ERROR] Supabase credentials not set in CONFIG.");
+    return false;
+  }
+
+  // STRICT GUARD: Only post card statements on or after 2026-10-01
+  if (bill.statement_date < CONFIG.MIN_DATE_BOUNDARY) {
+    Logger.log("❌ [DATE VIOLATION] Skipping statement before " + CONFIG.MIN_DATE_BOUNDARY + ": " + bill.statement_date);
     return false;
   }
 
