@@ -1829,6 +1829,12 @@ table.data-table tbody tr:last-child td {
   transform: scale(0.92);
 }
 
+.keypad-spacer {
+  height: 64px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .keypad-btn.action-btn {
   background: transparent;
   border: none;

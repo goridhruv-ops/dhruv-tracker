@@ -6,6 +6,17 @@ window.INITIAL_DATA = {
   booksStartDate: "2026-10-01",
   activeMonth: "2026-10",
   transactions: [], // Fresh start: 0 active transactions!
+  security: {
+    defaultPin: "1234",
+    pinHash: "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23",
+    pinSalt: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    pinEnabled: true,
+    autoLockTimeout: "180000"
+  },
+  supabaseConfig: {
+    url: "",
+    anonKey: ""
+  },
   accounts: [
     {
         "color":  "#004c8f",

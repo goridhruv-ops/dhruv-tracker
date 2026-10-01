@@ -18,8 +18,8 @@ const State = {
   rollovers: {},
   supabase: null,
   supabaseConfig: {
-    url: localStorage.getItem("tracker_sb_url") || "",
-    key: localStorage.getItem("tracker_sb_key") || ""
+    url: localStorage.getItem("tracker_sb_url") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && window.INITIAL_DATA.supabaseConfig.url) || "",
+    key: localStorage.getItem("tracker_sb_key") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && (window.INITIAL_DATA.supabaseConfig.anonKey || window.INITIAL_DATA.supabaseConfig.key)) || ""
   },
   geminiApiKey: localStorage.getItem("tracker_gemini_key") || "",
   charts: {
@@ -35,10 +35,9 @@ const State = {
   isSmartBannerDismissed: sessionStorage.getItem("tracker_banner_dismissed") === "true",
   themeMode: localStorage.getItem("tracker_theme_mode") || "system", // 'system' | 'dark' | 'light'
   security: {
-    pinEnabled: localStorage.getItem("tracker_pin_enabled") === "true",
-    pinHash: localStorage.getItem("tracker_pin_hash") || "",
-    pinSalt: localStorage.getItem("tracker_pin_salt") || "",
-    bioEnabled: localStorage.getItem("tracker_bio_enabled") === "true",
+    pinEnabled: localStorage.getItem("tracker_pin_enabled") !== "false",
+    pinHash: localStorage.getItem("tracker_pin_hash") || (window.INITIAL_DATA?.security?.pinHash || "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23"),
+    pinSalt: localStorage.getItem("tracker_pin_salt") || (window.INITIAL_DATA?.security?.pinSalt || "a1b2c3d4e5f60718293a4b5c6d7e8f90"),
     autoLockTimeout: localStorage.getItem("tracker_autolock_timeout") || "180000",
     isLocked: false,
     activePinBuffer: "",
@@ -72,12 +71,12 @@ const MERCHANT_RULES = [
 ];
 
 // Initialize on DOM Ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   initPrivacyMode();
-  initSecurity();
   initSupabase();
-  loadData();
+  await initSecurity();
+  await loadData();
   setupEventListeners();
   populateMonthFilter();
   renderApp();
@@ -272,6 +271,32 @@ async function loadData() {
         if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
       }
     });
+  }
+
+  // Load cloud card bills from Supabase if connected
+  if (State.supabase) {
+    try {
+      const { data: bills } = await State.supabase.from("card_bills").select("*");
+      if (bills && bills.length > 0) {
+        bills.forEach(b => {
+          State.cardBills[b.card_name] = {
+            due_date: b.due_date,
+            total_due: parseFloat(b.total_due) || 0,
+            min_due: parseFloat(b.min_due) || 0,
+            is_paid: Boolean(b.is_paid)
+          };
+        });
+        State.accounts.forEach(a => {
+          if (State.cardBills[a.name]) {
+            if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
+            if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
+            if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Cloud card bills sync notice:", e);
+    }
   }
 
   populateCategorySelects();
@@ -2297,9 +2322,6 @@ function openSettingsModal() {
   const pinInput = document.getElementById("masterPinInput");
   if (pinInput) pinInput.value = State.security.pinHash ? "••••" : "";
 
-  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
-  if (bioCheck) bioCheck.checked = State.security.bioEnabled;
-
   const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
   if (autoLockSelect) autoLockSelect.value = State.security.autoLockTimeout;
 
@@ -2334,7 +2356,6 @@ async function saveSupabaseSettings() {
   // Handle Security & PIN Settings
   const pinCheck = document.getElementById("securityPinEnabledCheckbox");
   const pinInput = document.getElementById("masterPinInput");
-  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
   const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
 
   if (pinCheck && pinCheck.checked) {
@@ -2352,7 +2373,6 @@ async function saveSupabaseSettings() {
       localStorage.setItem("tracker_pin_enabled", "true");
       localStorage.setItem("tracker_pin_hash", hash);
       localStorage.setItem("tracker_pin_salt", salt);
-      localStorage.setItem("tracker_has_prompted_pin", "true");
       sessionStorage.setItem("tracker_pin_session", enteredPin);
 
       // Derive AES key for in-memory encryption
@@ -2366,14 +2386,6 @@ async function saveSupabaseSettings() {
       localStorage.setItem("tracker_pin_enabled", "true");
     }
 
-    if (bioCheck) {
-      State.security.bioEnabled = bioCheck.checked;
-      localStorage.setItem("tracker_bio_enabled", bioCheck.checked ? "true" : "false");
-      if (bioCheck.checked && !localStorage.getItem("tracker_bio_cred_id")) {
-        localStorage.setItem("tracker_bio_cred_id", "enrolled");
-      }
-    }
-
     if (autoLockSelect) {
       State.security.autoLockTimeout = autoLockSelect.value;
       localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
@@ -2384,14 +2396,24 @@ async function saveSupabaseSettings() {
   }
 
   updateHeaderLockButton();
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
-  }
 
   if (initSupabase()) {
+    // Synchronize security settings for universal PIN across all devices
+    try {
+      await State.supabase.from("settings").upsert({
+        key: "app_security",
+        value: {
+          pinHash: State.security.pinHash,
+          pinSalt: State.security.pinSalt,
+          pinEnabled: State.security.pinEnabled,
+          updatedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+    } catch (sbSecErr) {
+      console.warn("Could not sync app_security to Supabase:", sbSecErr);
+    }
+
     showToast("Settings & Security configurations saved!", "success");
     await loadData();
     renderApp();
@@ -3220,35 +3242,65 @@ const VaultCrypto = {
 // ==============================================================================
 let idleTimer = null;
 
-function initSecurity() {
-  State.security.pinEnabled = localStorage.getItem("tracker_pin_enabled") === "true";
-  State.security.pinHash = localStorage.getItem("tracker_pin_hash") || "";
-  State.security.pinSalt = localStorage.getItem("tracker_pin_salt") || "";
-  State.security.bioEnabled = localStorage.getItem("tracker_bio_enabled") === "true";
-  State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
+async function initSecurity() {
+  const defaultSalt = window.INITIAL_DATA?.security?.pinSalt || "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const defaultHash = window.INITIAL_DATA?.security?.pinHash || "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23";
 
-  // Hide biometric button if not supported or not enrolled without distorting 3x4 numpad grid
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+  // Fetch universal PIN from Supabase settings if connected
+  if (State.supabase) {
+    try {
+      const { data, error } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "app_security")
+        .maybeSingle();
+
+      if (!error && data && data.value && data.value.pinHash && data.value.pinSalt) {
+        State.security.pinHash = data.value.pinHash;
+        State.security.pinSalt = data.value.pinSalt;
+        localStorage.setItem("tracker_pin_hash", data.value.pinHash);
+        localStorage.setItem("tracker_pin_salt", data.value.pinSalt);
+        if (data.value.pinEnabled !== undefined) {
+          State.security.pinEnabled = !!data.value.pinEnabled;
+          localStorage.setItem("tracker_pin_enabled", State.security.pinEnabled ? "true" : "false");
+        }
+      } else if (!error && (!data || !data.value || !data.value.pinHash)) {
+        // Seed default universal PIN to Supabase if not yet configured
+        const currentHash = localStorage.getItem("tracker_pin_hash") || defaultHash;
+        const currentSalt = localStorage.getItem("tracker_pin_salt") || defaultSalt;
+        await State.supabase.from("settings").upsert({
+          key: "app_security",
+          value: {
+            pinHash: currentHash,
+            pinSalt: currentSalt,
+            pinEnabled: true,
+            updatedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+      }
+    } catch (e) {
+      console.warn("Could not sync app_security from Supabase:", e);
+    }
   }
+
+  // Fallback to localStorage or universal default
+  if (!State.security.pinHash) {
+    State.security.pinHash = localStorage.getItem("tracker_pin_hash") || defaultHash;
+  }
+  if (!State.security.pinSalt) {
+    State.security.pinSalt = localStorage.getItem("tracker_pin_salt") || defaultSalt;
+  }
+
+  const savedEnabled = localStorage.getItem("tracker_pin_enabled");
+  State.security.pinEnabled = savedEnabled === null ? true : savedEnabled === "true";
+  State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
 
   updateHeaderLockButton();
 
   // Lock on startup if PIN protection is active
   if (State.security.pinEnabled && State.security.pinHash) {
     lockApp();
-  } else {
-    // First-run passcode setup prompt: gentle 1.2s delay if never prompted
-    const hasPrompted = localStorage.getItem("tracker_has_prompted_pin");
-    if (!hasPrompted) {
-      localStorage.setItem("tracker_has_prompted_pin", "true");
-      setTimeout(() => {
-        openPasscodeSetupModal();
-      }, 1200);
-    }
   }
 
   initAutoLock();
@@ -3279,14 +3331,10 @@ function openPasscodeSetupModal() {
 
   const pinInput = document.getElementById("setupPinInput");
   const confirmInput = document.getElementById("setupConfirmPinInput");
-  const bioCheck = document.getElementById("setupBioAuthCheckbox");
   const autoLockSelect = document.getElementById("setupAutoLockSelect");
 
   if (pinInput) pinInput.value = "";
   if (confirmInput) confirmInput.value = "";
-  if (bioCheck) {
-    bioCheck.checked = !!(window.PublicKeyCredential && (State.security.bioEnabled || !localStorage.getItem("tracker_bio_enabled")));
-  }
   if (autoLockSelect) {
     autoLockSelect.value = State.security.autoLockTimeout || "180000";
   }
@@ -3305,7 +3353,6 @@ function closePasscodeSetupModal() {
 async function savePasscodeFromModal() {
   const pinInput = document.getElementById("setupPinInput");
   const confirmInput = document.getElementById("setupConfirmPinInput");
-  const bioCheck = document.getElementById("setupBioAuthCheckbox");
   const autoLockSelect = document.getElementById("setupAutoLockSelect");
 
   const pin = pinInput ? pinInput.value.trim() : "";
@@ -3339,27 +3386,29 @@ async function savePasscodeFromModal() {
     localStorage.setItem("tracker_pin_enabled", "true");
     localStorage.setItem("tracker_pin_hash", hash);
     localStorage.setItem("tracker_pin_salt", salt);
-    localStorage.setItem("tracker_has_prompted_pin", "true");
     sessionStorage.setItem("tracker_pin_session", pin);
-
-    const bioEnabled = bioCheck ? bioCheck.checked : false;
-    State.security.bioEnabled = bioEnabled;
-    localStorage.setItem("tracker_bio_enabled", bioEnabled ? "true" : "false");
-    if (bioEnabled && !localStorage.getItem("tracker_bio_cred_id")) {
-      localStorage.setItem("tracker_bio_cred_id", "enrolled");
-    }
 
     if (autoLockSelect) {
       State.security.autoLockTimeout = autoLockSelect.value;
       localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
     }
 
-    // Preserve 3x4 numpad grid alignment
-    const bioBtn = document.getElementById("bioUnlockBtn");
-    if (bioBtn) {
-      const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-      bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-      bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+    // Sync to Supabase settings table if connected for universal PIN across all devices
+    if (State.supabase) {
+      try {
+        await State.supabase.from("settings").upsert({
+          key: "app_security",
+          value: {
+            pinHash: hash,
+            pinSalt: salt,
+            pinEnabled: true,
+            updatedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+      } catch (sbErr) {
+        console.warn("Could not sync updated PIN to Supabase settings:", sbErr);
+      }
     }
 
     // Sync settings modal fields if present
@@ -3369,14 +3418,12 @@ async function savePasscodeFromModal() {
     if (pinSec) pinSec.style.display = "block";
     const masterPin = document.getElementById("masterPinInput");
     if (masterPin) masterPin.value = "••••";
-    const settingsBioCheck = document.getElementById("bioAuthEnabledCheckbox");
-    if (settingsBioCheck) settingsBioCheck.checked = bioEnabled;
     const settingsAutoLock = document.getElementById("autoLockTimeoutSelect");
     if (settingsAutoLock && autoLockSelect) settingsAutoLock.value = autoLockSelect.value;
 
     updateHeaderLockButton();
     closePasscodeSetupModal();
-    showToast("Passcode set successfully! Locking Financial OS 🔒", "success");
+    showToast("Universal PIN updated successfully! Locking Financial OS 🔒", "success");
 
     setTimeout(() => {
       lockApp();
@@ -3400,18 +3447,6 @@ function lockApp() {
   const overlay = document.getElementById("securityLockOverlay");
   if (overlay) overlay.classList.add("active");
   updatePinDots();
-
-  // Preserve 3x4 numpad grid alignment
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
-  }
-
-  if (State.security.bioEnabled && window.PublicKeyCredential) {
-    setTimeout(triggerBiometricUnlock, 400);
-  }
 }
 
 async function unlockApp(derivedKey) {
@@ -3479,44 +3514,6 @@ async function verifyEnteredPin() {
       State.security.activePinBuffer = "";
       updatePinDots();
     }, 600);
-  }
-}
-
-async function triggerBiometricUnlock() {
-  if (!window.PublicKeyCredential || !State.security.bioEnabled) return;
-  const credId = localStorage.getItem("tracker_bio_cred_id");
-  if (!credId) return;
-
-  try {
-    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
-    const publicKeyReq = {
-      challenge,
-      userVerification: "required",
-      timeout: 60000
-    };
-    if (credId && credId !== "enrolled") {
-      try {
-        const rawIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
-        publicKeyReq.allowCredentials = [{
-          id: rawIdBytes,
-          type: "public-key"
-        }];
-      } catch (e) {}
-    }
-    const assertion = await navigator.credentials.get({ publicKey: publicKeyReq });
-
-    if (assertion) {
-      // Biometric verified! If a cached PIN is available in sessionStorage, derive key
-      const cachedPin = sessionStorage.getItem("tracker_pin_session");
-      if (cachedPin && State.security.pinSalt) {
-        const key = await VaultCrypto.deriveAesKey(cachedPin, State.security.pinSalt);
-        await unlockApp(key);
-      } else {
-        await unlockApp(null);
-      }
-    }
-  } catch (err) {
-    console.warn("Biometric authentication skipped or dismissed:", err);
   }
 }
 

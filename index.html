@@ -47,7 +47,7 @@
         <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
-        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID" style="visibility:hidden; pointer-events:none;"><i data-lucide="scan-face" style="width:20px;height:20px;"></i></button>
+        <div class="keypad-spacer" style="visibility:hidden; pointer-events:none;" aria-hidden="true"></div>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
         <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
       </div>
@@ -1033,12 +1033,6 @@
             <label class="form-label">Set / Change 4-Digit Passcode</label>
             <input type="password" id="masterPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="e.g. 1234">
           </div>
-          <div class="form-group" style="margin-bottom:0.75rem;">
-            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem;">
-              <input type="checkbox" id="bioAuthEnabledCheckbox">
-              Enable Face ID / Touch ID (Biometrics)
-            </label>
-          </div>
           <div class="form-group" style="margin-bottom:0;">
             <label class="form-label">Auto-Lock Inactivity Timeout</label>
             <select id="autoLockTimeoutSelect" class="form-select">
@@ -1147,7 +1141,7 @@
             <span class="badge" style="background:var(--primary-light); color:var(--primary); font-size:0.68rem;">AES-256 GCM</span>
           </div>
           <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
-            These credentials are encrypted client-side using your passcode before saving. They are only decrypted when unlocked with your PIN or Face ID.
+            These credentials are encrypted client-side using your passcode before saving. They are only decrypted when unlocked with your PIN.
           </p>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
@@ -1298,17 +1292,6 @@
         <div class="form-group" style="margin-bottom:1.25rem;">
           <label class="form-label" for="setupConfirmPinInput">Confirm 4-Digit Passcode *</label>
           <input type="password" id="setupConfirmPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="••••" autocomplete="new-password" style="font-size:1.4rem; letter-spacing:0.5rem; text-align:center; font-weight:700;" required>
-        </div>
-
-        <!-- Biometric Toggle -->
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.875rem; font-weight:500;">
-            <input type="checkbox" id="setupBioAuthCheckbox" checked>
-            <span>Enable Face ID / Touch ID (Biometrics)</span>
-          </label>
-          <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-left:1.6rem; margin-top:0.25rem;">
-            Unlock quickly without typing your PIN every time on supported devices.
-          </small>
         </div>
 
         <!-- Auto-Lock Inactivity Timeout -->
