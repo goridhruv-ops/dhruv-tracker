@@ -4,6 +4,8 @@
 
 :root {
   --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Plus Jakarta Sans", "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
   
   /* Light Theme */
   --bg-primary: #f8fafc;
@@ -13,6 +15,7 @@
   --border-color: #e2e8f0;
   --border-subtle: #cbd5e1;
   --card-border: rgba(0, 0, 0, 0.08);
+  --edge-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
   
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -31,10 +34,12 @@
   --kotak-bg: #ffe4e6;
   
   --income: #10b981;
+  --income-glow: rgba(16, 185, 129, 0.15);
   --income-bg: #ecfdf5;
   --income-border: #a7f3d0;
   
-  --expense: #ef4444;
+  --expense: #f43f5e;
+  --expense-glow: rgba(244, 63, 94, 0.15);
   --expense-bg: #fef2f2;
   --expense-border: #fecaca;
   
@@ -42,7 +47,8 @@
   --debt-bg: #fef2f2;
   --debt-border: #fca5a5;
   
-  --savings: #0284c7;
+  --savings: #0ea5e9;
+  --savings-glow: rgba(14, 165, 233, 0.15);
   --savings-bg: #f0f9ff;
   --savings-border: #bae6fd;
 
@@ -52,6 +58,7 @@
 
   --warning: #f59e0b;
   --warning-bg: #fffbeb;
+  --warning-glow: rgba(245, 158, 11, 0.15);
 
   --gemini-gradient: linear-gradient(135deg, #1a73e8, #9333ea, #ec4899);
   
@@ -69,12 +76,13 @@
 }
 
 [data-theme="dark"] {
-  --bg-primary: #090d16;
-  --bg-secondary: #131b2e;
-  --bg-tertiary: #1e293b;
-  --bg-glass: rgba(19, 27, 46, 0.90);
-  --border-color: #27354f;
-  --border-subtle: #334155;
+  --bg-primary: #07080b;
+  --bg-secondary: #0d1017;
+  --bg-tertiary: #141822;
+  --bg-glass: rgba(13, 16, 23, 0.88);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --edge-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
   
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
@@ -90,29 +98,42 @@
   --kotak-red: #fb7185;
   --kotak-bg: rgba(251, 113, 133, 0.15);
 
-  --income: #34d399;
-  --income-bg: rgba(16, 185, 129, 0.15);
-  --income-border: rgba(16, 185, 129, 0.3);
+  --income: #10b981;
+  --income-glow: rgba(16, 185, 129, 0.15);
+  --income-bg: rgba(16, 185, 129, 0.12);
+  --income-border: rgba(16, 185, 129, 0.25);
   
-  --expense: #f87171;
-  --expense-bg: rgba(239, 68, 68, 0.15);
-  --expense-border: rgba(239, 68, 68, 0.3);
+  --expense: #f43f5e;
+  --expense-glow: rgba(244, 63, 94, 0.15);
+  --expense-bg: rgba(244, 63, 94, 0.12);
+  --expense-border: rgba(244, 63, 94, 0.25);
   
-  --debt: #f87171;
-  --debt-bg: rgba(185, 28, 28, 0.2);
-  --debt-border: rgba(185, 28, 28, 0.4);
+  --debt: #f43f5e;
+  --debt-bg: rgba(244, 63, 94, 0.15);
+  --debt-border: rgba(244, 63, 94, 0.3);
   
-  --savings: #38bdf8;
-  --savings-bg: rgba(2, 132, 199, 0.15);
-  --savings-border: rgba(2, 132, 199, 0.3);
+  --savings: #0ea5e9;
+  --savings-glow: rgba(14, 165, 233, 0.15);
+  --savings-bg: rgba(14, 165, 233, 0.12);
+  --savings-border: rgba(14, 165, 233, 0.25);
 
   --transfer: #a78bfa;
   --transfer-bg: rgba(139, 92, 246, 0.15);
   --transfer-border: rgba(139, 92, 246, 0.3);
+
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --warning-glow: rgba(245, 158, 11, 0.15);
   
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+}
+
+/* Lucide Vector Micro-Icons */
+.lucide {
+  stroke-width: 1.75px;
+  vertical-align: middle;
 }
 
 /* Base Styles */
@@ -138,6 +159,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
 .container {
@@ -328,7 +351,7 @@ header.app-header {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1rem;
-  margin: 1.25rem 0;
+  margin-bottom: 1.25rem;
 }
 
 .bank-card {
@@ -339,7 +362,7 @@ header.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 4px 20px -2px rgba(0, 0, 0, 0.35);
   position: relative;
   overflow: hidden;
   transition: var(--transition);
@@ -347,7 +370,7 @@ header.app-header {
 
 .bank-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 6px 24px -2px rgba(0, 0, 0, 0.45);
 }
 
 .bank-card::before {
@@ -388,6 +411,8 @@ header.app-header {
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
 .bank-sub-text {
@@ -470,7 +495,7 @@ main.main-content {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.15rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 4px 20px -2px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -481,7 +506,7 @@ main.main-content {
 
 .metric-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 6px 24px -2px rgba(0, 0, 0, 0.45);
   border-color: var(--border-subtle);
 }
 
@@ -526,6 +551,8 @@ main.main-content {
   color: var(--text-primary);
   margin-bottom: 0.25rem;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
 .metric-sub {
@@ -539,8 +566,29 @@ main.main-content {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 4px 20px -2px rgba(0, 0, 0, 0.35);
   margin-bottom: 1.75rem;
+}
+
+/* Tier-1 Luminous Edge Hairlines & OLED Card Containers */
+.bank-card,
+.metric-card,
+.tactile-card,
+.person-card,
+.chart-card,
+.data-card {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
+.chart-card,
+.data-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
 }
 
 .section-header {
@@ -621,6 +669,8 @@ table.data-table td {
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   vertical-align: middle;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
 
 table.data-table tbody tr:hover {
@@ -692,10 +742,16 @@ table.data-table tbody tr:last-child td {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), 0 4px 20px -2px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transition: var(--transition);
+}
+
+.person-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 6px 24px -2px rgba(0, 0, 0, 0.45);
 }
 
 .person-card-header {
@@ -810,6 +866,109 @@ table.data-table tbody tr:last-child td {
   flex-wrap: wrap;
 }
 
+/* ==============================================================================
+   NATIVE iOS BOTTOM SHEET & CHIP SELECTORS
+   ============================================================================== */
+.sheet-drag-handle {
+  width: 36px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 6px auto 14px;
+}
+
+[data-theme="light"] .sheet-drag-handle {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.chip-group {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chip-group::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.chip-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary);
+}
+
+.chip-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* Quick Log Amount Input with Tabular Numerals */
+.quick-log-amount-container {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md, 12px);
+  padding: 0.35rem 0.85rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quick-log-amount-container:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.quick-log-currency-symbol {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 0.4rem;
+  user-select: none;
+  line-height: 1;
+}
+
+.quick-log-amount-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: -0.5px;
+  width: 100%;
+  padding: 0;
+  line-height: 1.2;
+}
+
+.quick-log-amount-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.45;
+}
+
 /* Forms */
 .form-group {
   margin-bottom: 1.15rem;
@@ -832,6 +991,8 @@ table.data-table tbody tr:last-child td {
   color: var(--text-primary);
   font-size: 0.875rem;
   font-family: inherit;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "cv05" 1;
   outline: none;
   transition: var(--transition);
 }
@@ -1263,33 +1424,33 @@ table.data-table tbody tr:last-child td {
   border-left: 4px solid var(--primary);
   border-radius: var(--radius-md);
   padding: 1rem 1.25rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 16px -2px rgba(0, 0, 0, 0.3);
   transition: var(--transition);
   position: relative;
 }
 
 .notif-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 6px 20px -2px rgba(0, 0, 0, 0.4);
 }
 
 .notif-card.notif-danger {
   border-left-color: var(--expense);
-  background: linear-gradient(to right, rgba(239, 68, 68, 0.05), var(--bg-secondary) 30%);
+  background: linear-gradient(to right, var(--expense-glow), var(--bg-secondary) 35%);
 }
 
 .notif-card.notif-warning {
   border-left-color: var(--warning);
-  background: linear-gradient(to right, rgba(245, 158, 11, 0.05), var(--bg-secondary) 30%);
+  background: linear-gradient(to right, var(--warning-glow), var(--bg-secondary) 35%);
 }
 
 .notif-card.notif-info {
   border-left-color: var(--primary);
-  background: linear-gradient(to right, rgba(99, 102, 241, 0.05), var(--bg-secondary) 30%);
+  background: linear-gradient(to right, var(--primary-light), var(--bg-secondary) 35%);
 }
 
 .notif-card.notif-success {
   border-left-color: var(--income);
-  background: linear-gradient(to right, rgba(16, 185, 129, 0.05), var(--bg-secondary) 30%);
+  background: linear-gradient(to right, var(--income-glow), var(--bg-secondary) 35%);
 }
 
 .notif-card-header {
@@ -1998,6 +2159,43 @@ table.data-table tbody tr:last-child td {
 }
 
 @media (max-width: 768px) {
+  /* Native iOS Bottom Pull-Sheet Modal */
+  #quickLogModal.modal-overlay,
+  .modal-bottom-sheet.modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+  }
+
+  #quickLogModal .modal-content,
+  .modal-bottom-sheet .modal-content {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 28px 28px 0 0 !important;
+    margin: 0 !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-bottom: none !important;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5) !important;
+    animation: sheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    max-height: 88vh !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+  }
+
+  @keyframes sheetSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
   /* Viewport lock & compact container */
   .container {
     padding: 0 0.85rem !important;
@@ -2123,6 +2321,14 @@ table.data-table tbody tr:last-child td {
 
   .dock-item .dock-icon {
     font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dock-item .dock-icon .lucide {
+    width: 20px;
+    height: 20px;
   }
 
   .dock-item.active {
@@ -2157,6 +2363,12 @@ table.data-table tbody tr:last-child td {
     -webkit-tap-highlight-color: transparent;
   }
 
+  .dock-fab .lucide {
+    width: 26px;
+    height: 26px;
+    stroke-width: 2.25px;
+  }
+
   .dock-fab:active {
     transform: scale(0.92);
   }
@@ -2182,8 +2394,6 @@ table.data-table tbody tr:last-child td {
   /* Full-width constraints & single column layouts on Mobile */
   .tactile-card,
   .card-deck-grid,
-  .bank-balances-banner,
-  .bank-card,
   .metrics-grid,
   .person-ledgers-grid,
   .person-card {
@@ -2193,9 +2403,36 @@ table.data-table tbody tr:last-child td {
     min-width: 0 !important;
   }
 
+  /* Mobile Swipe Carousel for Bank Balances */
   .bank-balances-banner {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 12px !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 1.25rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    touch-action: pan-x pan-y !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
+
+  .bank-balances-banner::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .bank-card {
+    flex: 0 0 calc(88% - 8px) !important;
+    scroll-snap-align: start !important;
+    min-width: 260px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+  }
+
   .card-deck-grid {
     grid-template-columns: 1fr !important;
   }
@@ -2238,8 +2475,6 @@ table.data-table tbody tr:last-child td {
 
   .tactile-card,
   .card-deck-grid,
-  .bank-balances-banner,
-  .bank-card,
   .metrics-grid,
   .person-ledgers-grid,
   .person-card {

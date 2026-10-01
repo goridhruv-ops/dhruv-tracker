@@ -12,13 +12,19 @@
   
   <!-- Pre-loaded Clean Setup for 1st October Fresh Start -->
   <script src="initial_data.js"></script>
+
+  <!-- Lucide Vector Micro-Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- SheetJS for 1-Click Excel Setup Import -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
   <!-- Fullscreen Dual-Tier Security Lock Overlay -->
   <div id="securityLockOverlay" class="security-lock-overlay">
     <div class="lock-card">
-      <div class="lock-icon-badge">🔒</div>
+      <div class="lock-icon-badge"><i data-lucide="lock" style="width:28px;height:28px;color:#818cf8;"></i></div>
       <h2 class="lock-title">Dhruv Financial OS</h2>
       <p class="lock-subtitle" id="lockScreenSubtitle">Enter 4-Digit Passcode to Unlock</p>
 
@@ -41,7 +47,7 @@
         <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
-        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID" style="visibility:hidden; pointer-events:none;">🪪</button>
+        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID" style="visibility:hidden; pointer-events:none;"><i data-lucide="scan-face" style="width:20px;height:20px;"></i></button>
         <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
         <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
       </div>
@@ -57,7 +63,7 @@
   <header class="app-header">
     <div class="container header-content">
       <div class="logo-area">
-        <div class="logo-icon">💰</div>
+        <div class="logo-icon"><i data-lucide="wallet-cards" style="width:20px;height:20px;color:#818cf8;"></i></div>
         <div>
           <div class="logo-title">Dhruv Gori | Financial OS</div>
           <div class="logo-subtitle">Real-time Budget, Bank Balances & Automated Expense Tracker</div>
@@ -92,27 +98,27 @@
 
         <!-- Notifications Bell Button -->
         <button class="btn btn-icon notif-bell-btn" id="notifBellBtn" onclick="toggleNotificationsDrawer()" title="Alerts & Intimations">
-          🔔<span id="headerNotifBadge" class="notif-badge" style="display:none;">0</span>
+          <i data-lucide="bell" style="width:16px;height:16px;"></i><span id="headerNotifBadge" class="notif-badge" style="display:none;">0</span>
         </button>
 
         <!-- Privacy Blur Mode Toggle -->
         <button class="btn btn-icon" id="privacyToggleBtn" onclick="togglePrivacyMode()" title="Toggle Privacy Blur (Shift + P)">
-          👁️
+          <i data-lucide="eye" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Dedicated Lock App / Passcode Button -->
         <button class="btn btn-icon" id="headerLockBtn" onclick="handleHeaderLockClick()" title="Lock Financial OS (Shift + L)">
-          🔒
+          <i data-lucide="lock" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Supabase Settings Button -->
         <button class="btn btn-icon" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
-          ⚙️
+          <i data-lucide="settings" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Theme Toggle (Auto / Dark / Light) -->
         <button class="btn btn-icon" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
-          💻
+          <i data-lucide="sun-moon" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Status Badge -->
@@ -125,80 +131,21 @@
   <main class="main-content">
     <div class="container">
 
-      <!-- ========================================== -->
-      <!-- LIVE BANK BALANCES BANNER (HDFC & KOTAK)   -->
-      <!-- ========================================== -->
-      <section class="bank-balances-banner">
-        <!-- HDFC Bank Account Card -->
-        <div class="bank-card hdfc">
-          <div class="bank-info-left">
-            <div class="bank-brand hdfc-color">
-              <span>🏦</span> HDFC Bank Account
-            </div>
-            <div class="bank-balance-display privacy-sensitive" id="displayHdfcBalance">₹0</div>
-            <div class="bank-sub-text">Primary Salary, Debits & Bills</div>
-          </div>
-          <div class="bank-actions">
-            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
-              ⚙️ Opening Bal
-            </button>
-            <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
-              📜 Ledger
-            </button>
-          </div>
-        </div>
-
-        <!-- Kotak Bank Account Card -->
-        <div class="bank-card kotak">
-          <div class="bank-info-left">
-            <div class="bank-brand kotak-color">
-              <span>📈</span> Kotak Bank Account
-            </div>
-            <div class="bank-balance-display privacy-sensitive" id="displayKotakBalance">₹0</div>
-            <div class="bank-sub-text">Stock Investments & Liquidity</div>
-          </div>
-          <div class="bank-actions">
-            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openTransferModal()">
-              ➔ Transfer to HDFC
-            </button>
-            <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
-              📜 Ledger
-            </button>
-          </div>
-        </div>
-
-        <!-- Physical Cash in Hand -->
-        <div class="bank-card cash">
-          <div class="bank-info-left">
-            <div class="bank-brand cash-color">
-              <span>💵</span> Cash in Hand
-            </div>
-            <div class="bank-balance-display privacy-sensitive" id="displayCashBalance">₹0</div>
-            <div class="bank-sub-text">Physical Wallet (Manual Tracking)</div>
-          </div>
-          <div class="bank-actions">
-            <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
-              ⚙️ Opening Bal
-            </button>
-          </div>
-        </div>
-      </section>
-
       <!-- Navigation Tabs -->
       <nav class="nav-tabs" style="margin-bottom: 1.5rem;">
-        <button class="nav-tab active" data-tab="overview">📊 Overview & Budgets</button>
-        <button class="nav-tab" data-tab="bank-ledgers">🏦 Dual Bank Ledgers</button>
-        <button class="nav-tab" data-tab="people-ledgers">👥 People Ledgers</button>
-        <button class="nav-tab" data-tab="cards-emis">💳 Cards & EMI Schedule</button>
-        <button class="nav-tab" data-tab="transactions">📜 All Transactions</button>
+        <button class="nav-tab active" data-tab="overview"><i data-lucide="layout-dashboard" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Overview & Budgets</button>
+        <button class="nav-tab" data-tab="bank-ledgers"><i data-lucide="landmark" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Dual Bank Ledgers</button>
+        <button class="nav-tab" data-tab="people-ledgers"><i data-lucide="users" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> People Ledgers</button>
+        <button class="nav-tab" data-tab="cards-emis"><i data-lucide="credit-card" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Cards & EMI Schedule</button>
+        <button class="nav-tab" data-tab="transactions"><i data-lucide="receipt" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> All Transactions</button>
         <button class="nav-tab" data-tab="review">
-          📥 Mail Inbox <span id="reviewBadgeCount" class="badge badge-review" style="display:none;">0</span>
+          <i data-lucide="inbox" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Mail Inbox <span id="reviewBadgeCount" class="badge badge-review" style="display:none;">0</span>
         </button>
         <button class="nav-tab" data-tab="notifications">
-          🔔 Alerts & Intimations <span id="tabNotifBadge" class="badge" style="background:var(--warning); color:#fff; display:none;">0</span>
+          <i data-lucide="bell-ring" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Alerts & Intimations <span id="tabNotifBadge" class="badge" style="background:var(--warning); color:#fff; display:none;">0</span>
         </button>
-        <button class="nav-tab" data-tab="parser">⚡ Quick SMS / Email Parser</button>
-        <button class="nav-tab" data-tab="analytics">📈 Visual Analytics</button>
+        <button class="nav-tab" data-tab="parser"><i data-lucide="zap" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Quick Parser</button>
+        <button class="nav-tab" data-tab="analytics"><i data-lucide="trending-up" style="width:16px;height:16px;vertical-align:-2px;margin-right:4px;"></i> Visual Analytics</button>
       </nav>
 
       <!-- ========================================== -->
@@ -206,6 +153,63 @@
       <!-- ========================================== -->
       <section id="overview" class="tab-pane active">
         
+        <!-- Live Bank Balances Banner (HDFC, Kotak & Cash) -->
+        <section class="bank-balances-banner">
+          <!-- HDFC Bank Account Card -->
+          <div class="bank-card hdfc">
+            <div class="bank-info-left">
+              <div class="bank-brand hdfc-color">
+                <span>🏦</span> HDFC Bank Account
+              </div>
+              <div class="bank-balance-display privacy-sensitive" id="displayHdfcBalance">₹0</div>
+              <div class="bank-sub-text">Primary Salary, Debits & Bills</div>
+            </div>
+            <div class="bank-actions">
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
+                ⚙️ Opening Bal
+              </button>
+              <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
+                📜 Ledger
+              </button>
+            </div>
+          </div>
+
+          <!-- Kotak Bank Account Card -->
+          <div class="bank-card kotak">
+            <div class="bank-info-left">
+              <div class="bank-brand kotak-color">
+                <span>📈</span> Kotak Bank Account
+              </div>
+              <div class="bank-balance-display privacy-sensitive" id="displayKotakBalance">₹0</div>
+              <div class="bank-sub-text">Stock Investments & Liquidity</div>
+            </div>
+            <div class="bank-actions">
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openTransferModal()">
+                ➔ Transfer to HDFC
+              </button>
+              <button class="btn btn-primary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="document.querySelector('[data-tab=bank-ledgers]').click()">
+                📜 Ledger
+              </button>
+            </div>
+          </div>
+
+          <!-- Physical Cash in Hand -->
+          <div class="bank-card cash">
+            <div class="bank-info-left">
+              <div class="bank-brand cash-color">
+                <span>💵</span> Cash in Hand
+              </div>
+              <div class="bank-balance-display privacy-sensitive" id="displayCashBalance">₹0</div>
+              <div class="bank-sub-text">Physical Wallet (Manual Tracking)</div>
+            </div>
+            <div class="bank-actions">
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.65rem;" onclick="openBooksSetupModal()">
+                ⚙️ Opening Bal
+              </button>
+            </div>
+          </div>
+        </section>
+
         <!-- Smart Alerts Banner (Card Due Soon & 70%+ Budget Head Alerts) -->
         <div id="smartAlertsBanner" class="smart-alerts-banner" style="display: none;">
           <div class="alerts-banner-content">
@@ -731,6 +735,25 @@
           Configure your books starting date and starting balances for all accounts, cards, and person ledgers.
         </p>
 
+        <!-- 1-Click Excel Setup Import Box -->
+        <div class="excel-import-box" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(139, 92, 246, 0.08)); border: 1.5px dashed var(--primary); border-radius: var(--radius-md); padding: 1.1rem; margin-bottom: 1.35rem; text-align: center;">
+          <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 0.35rem; display: flex; align-items: center; justify-content: center; gap: 0.45rem;">
+            <i data-lucide="file-spreadsheet" style="width:18px;height:18px;color:var(--primary);"></i> 1-Click Excel Setup Import
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem; line-height: 1.4;">
+            Fill out <strong>Dhruv_Financial_OS_Setup_Template.xlsx</strong> and upload it here to import bank balances, credit card limits & cycles, person ledgers, and EMIs in one shot.
+          </p>
+          <div style="display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-primary" onclick="document.getElementById('setupExcelFileInput').click()" style="font-size: 0.82rem; padding: 0.45rem 1.1rem; border-radius: 99px;">
+              <i data-lucide="upload" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"></i> Upload Setup Excel (.xlsx)
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="downloadSetupExcelTemplate()" style="font-size: 0.82rem; padding: 0.45rem 1.1rem; border-radius: 99px;">
+              <i data-lucide="download" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"></i> Download Setup Template
+            </button>
+            <input type="file" id="setupExcelFileInput" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelSetupUpload(event)">
+          </div>
+        </div>
+
         <!-- Start Date -->
         <div class="form-group">
           <label class="form-label">📅 Books Start Date</label>
@@ -1175,36 +1198,78 @@
   <!-- ========================================== -->
   <!-- MODAL: TIER-1 PRIVACY-SAFE QUICK LOG       -->
   <!-- ========================================== -->
-  <div id="quickLogModal" class="modal-overlay" style="z-index: 10005;">
-    <div class="modal-content" style="max-width: 440px;">
-      <div class="modal-header">
-        <h3 class="modal-title">⚡ Quick Log Transaction</h3>
-        <button class="modal-close" onclick="closeQuickLogModal()">✕</button>
+  <div id="quickLogModal" class="modal-overlay modal-bottom-sheet" style="z-index: 10005;">
+    <div class="modal-content" style="max-width: 460px;">
+      <div class="sheet-drag-handle"></div>
+      <div class="modal-header" style="padding: 0.4rem 1.25rem 0.65rem; border-bottom: 1px solid var(--border-color); align-items: center;">
+        <h3 class="modal-title" style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.4rem;">⚡ Quick Log Spend</h3>
+        <button class="modal-close" onclick="closeQuickLogModal()" aria-label="Close">✕</button>
       </div>
-      <div class="modal-body">
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+      <div class="modal-body" style="padding: 1rem 1.25rem 1.15rem;">
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.35;">
           Record an expense quickly on the go. Your financial balances and private ledgers remain protected behind the lock screen.
         </p>
-        <div class="form-group">
-          <label class="form-label">Amount (₹) *</label>
-          <input type="number" id="quickLogAmountInput" class="form-input" placeholder="e.g. 350" step="any" required autofocus style="font-size:1.2rem; font-weight:700;">
+
+        <!-- Amount (₹) with large tabular numerals -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 0.3rem;">Amount (₹) *</label>
+          <div class="quick-log-amount-container">
+            <span class="quick-log-currency-symbol">₹</span>
+            <input
+              type="number"
+              id="quickLogAmountInput"
+              class="quick-log-amount-input"
+              placeholder="0"
+              step="any"
+              inputmode="decimal"
+              required
+              autofocus
+            >
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Paid Via (Account) *</label>
-          <select id="quickLogAccountSelect" class="form-select"></select>
+
+        <!-- Paid Via (Account) single-tap horizontal chips -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.35rem;">
+            <label class="form-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 0;">Paid Via (Account) *</label>
+            <button type="button" class="btn-link-subtle" onclick="toggleQuickLogSelect('quickLogAccountSelect')" style="font-size: 0.72rem; color: var(--primary); background: none; border: none; cursor: pointer; padding: 0;">All accounts ▾</button>
+          </div>
+          <div class="chip-group" id="quickLogAccountChips">
+            <button type="button" class="chip-btn active" data-account-match="HDFC">HDFC</button>
+            <button type="button" class="chip-btn" data-account-match="Kotak">Kotak</button>
+            <button type="button" class="chip-btn" data-account-match="ICICI Amazon">ICICI Amazon</button>
+            <button type="button" class="chip-btn" data-account-match="Amex">Amex</button>
+            <button type="button" class="chip-btn" data-account-match="Cash">Cash</button>
+          </div>
+          <select id="quickLogAccountSelect" class="form-select" style="display: none; margin-top: 0.5rem; font-size: 0.82rem;"></select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Category *</label>
-          <select id="quickLogCategorySelect" class="form-select"></select>
+
+        <!-- Category single-tap horizontal chips -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.35rem;">
+            <label class="form-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 0;">Category *</label>
+            <button type="button" class="btn-link-subtle" onclick="toggleQuickLogSelect('quickLogCategorySelect')" style="font-size: 0.72rem; color: var(--primary); background: none; border: none; cursor: pointer; padding: 0;">All categories ▾</button>
+          </div>
+          <div class="chip-group" id="quickLogCategoryChips">
+            <button type="button" class="chip-btn active" data-category-match="Food">🍔 Food</button>
+            <button type="button" class="chip-btn" data-category-match="Grocery">🛒 Grocery</button>
+            <button type="button" class="chip-btn" data-category-match="Fuel">⛽ Fuel</button>
+            <button type="button" class="chip-btn" data-category-match="Travel">🚕 Travel</button>
+            <button type="button" class="chip-btn" data-category-match="Shopping">🛍️ Shopping</button>
+            <button type="button" class="chip-btn" data-category-match="Bills">💡 Bills</button>
+          </div>
+          <select id="quickLogCategorySelect" class="form-select" style="display: none; margin-top: 0.5rem; font-size: 0.82rem;"></select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Description / Merchant</label>
-          <input type="text" id="quickLogDescInput" class="form-input" placeholder="e.g. Swiggy Lunch, HPCL Petrol, Chai">
+
+        <!-- Description / Merchant (Optional) -->
+        <div class="form-group" style="margin-bottom: 0.25rem;">
+          <label class="form-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 0.3rem;">Description / Merchant</label>
+          <input type="text" id="quickLogDescInput" class="form-input" placeholder="e.g. Swiggy Lunch, HPCL Petrol, Chai" style="font-size: 0.88rem;">
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeQuickLogModal()">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitQuickLogTransaction()">✓ Save & Exit</button>
+      <div class="modal-footer" style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--border-color); display: flex; gap: 0.65rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeQuickLogModal()" style="border-radius: 99px; padding: 0.55rem 1.2rem; font-size: 0.85rem;">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitQuickLogTransaction()" style="border-radius: 99px; padding: 0.55rem 1.45rem; font-size: 0.85rem; font-weight: 600;">✓ Save & Exit</button>
       </div>
     </div>
   </div>
@@ -1270,22 +1335,22 @@
   <!-- ========================================== -->
   <nav class="mobile-bottom-dock">
     <button class="dock-item active" data-tab="overview" onclick="switchMobileTab('overview')">
-      <span class="dock-icon">📊</span>
+      <span class="dock-icon"><i data-lucide="layout-dashboard"></i></span>
       <span class="dock-label">Home</span>
     </button>
     <button class="dock-item" data-tab="bank-ledgers" onclick="switchMobileTab('bank-ledgers')">
-      <span class="dock-icon">🏦</span>
+      <span class="dock-icon"><i data-lucide="landmark"></i></span>
       <span class="dock-label">Ledgers</span>
     </button>
     <div class="dock-fab-wrapper">
-      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction">+</button>
+      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction"><i data-lucide="plus"></i></button>
     </div>
     <button class="dock-item" data-tab="cards-emis" onclick="switchMobileTab('cards-emis')">
-      <span class="dock-icon">💳</span>
+      <span class="dock-icon"><i data-lucide="credit-card"></i></span>
       <span class="dock-label">Cards</span>
     </button>
     <button class="dock-item" data-tab="review" onclick="switchMobileTab('review')">
-      <span class="dock-icon">📥</span>
+      <span class="dock-icon"><i data-lucide="inbox"></i></span>
       <span class="dock-label">Inbox</span>
       <span id="dockReviewBadge" class="dock-badge" style="display:none;">0</span>
     </button>

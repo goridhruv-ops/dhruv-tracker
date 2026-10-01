@@ -81,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   populateMonthFilter();
   renderApp();
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 });
 
 // Adaptive System & Manual Theme Engine
@@ -108,7 +111,7 @@ function cycleTheme() {
   State.themeMode = next;
   localStorage.setItem("tracker_theme_mode", next);
   applyTheme(next);
-  showToast(`Theme: ${next === "system" ? "Auto (Device Mode) 💻" : next === "dark" ? "Dark Mode 🌙" : "Light Mode ☀️"}`);
+  showToast(`Theme: ${next === "system" ? "Auto (Device Mode)" : next === "dark" ? "Dark Mode" : "Light Mode"}`);
 }
 
 function applyTheme(mode) {
@@ -124,9 +127,12 @@ function applyTheme(mode) {
 function updateThemeIcon(mode) {
   const btn = document.getElementById("themeToggleBtn");
   if (!btn) return;
-  if (mode === "system") btn.innerHTML = "💻";
-  else if (mode === "dark") btn.innerHTML = "🌙";
-  else btn.innerHTML = "☀️";
+  if (mode === "system") btn.innerHTML = `<i data-lucide="sun-moon" style="width:16px;height:16px;"></i>`;
+  else if (mode === "dark") btn.innerHTML = `<i data-lucide="moon" style="width:16px;height:16px;"></i>`;
+  else btn.innerHTML = `<i data-lucide="sun" style="width:16px;height:16px;"></i>`;
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
 
 // Privacy Blur Engine ("Coffee Shop Mode")
@@ -134,7 +140,12 @@ function initPrivacyMode() {
   if (State.security.privacyMode) {
     document.documentElement.setAttribute("data-privacy", "true");
     const btn = document.getElementById("privacyToggleBtn");
-    if (btn) btn.innerHTML = "🕶️";
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="eye-off" style="width:16px;height:16px;"></i>`;
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
   }
 
   window.addEventListener("keydown", (e) => {
@@ -152,7 +163,14 @@ function togglePrivacyMode() {
   State.security.privacyMode = next;
   localStorage.setItem("tracker_privacy_mode", next ? "true" : "false");
   const btn = document.getElementById("privacyToggleBtn");
-  if (btn) btn.innerHTML = next ? "🕶️" : "👁️";
+  if (btn) {
+    btn.innerHTML = next 
+      ? `<i data-lucide="eye-off" style="width:16px;height:16px;"></i>` 
+      : `<i data-lucide="eye" style="width:16px;height:16px;"></i>`;
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  }
   showToast(next ? "Privacy Blur Activated (Public Mode)" : "Privacy Blur Disabled");
 }
 
@@ -276,8 +294,16 @@ function setupEventListeners() {
       const pane = document.getElementById(targetId);
       if (pane) pane.classList.add("active");
 
+      // Sync mobile bottom dock items if applicable
+      document.querySelectorAll(".dock-item").forEach(d => {
+        d.classList.toggle("active", d.getAttribute("data-tab") === targetId);
+      });
+
       if (targetId === "analytics") {
         setTimeout(renderCharts, 100);
+      }
+      if (window.lucide) {
+        lucide.createIcons();
       }
     });
   });
@@ -363,6 +389,37 @@ function setupEventListeners() {
     pSetupModal.addEventListener("click", (e) => {
       if (e.target.id === "passcodeSetupModal") {
         closePasscodeSetupModal();
+      }
+    });
+  }
+
+  // Backdrop click to dismiss Quick Log Modal
+  const qModal = document.getElementById("quickLogModal");
+  if (qModal) {
+    qModal.addEventListener("click", (e) => {
+      if (e.target.id === "quickLogModal") {
+        closeQuickLogModal();
+      }
+    });
+  }
+
+  // Keyboard Enter shortcut on amount & desc inputs
+  const qAmt = document.getElementById("quickLogAmountInput");
+  if (qAmt) {
+    qAmt.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitQuickLogTransaction();
+      }
+    });
+  }
+
+  const qDesc = document.getElementById("quickLogDescInput");
+  if (qDesc) {
+    qDesc.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitQuickLogTransaction();
       }
     });
   }
@@ -686,7 +743,15 @@ function renderApp() {
   renderNotifications(fin);
   renderCharts();
   updateReviewBadge();
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
+
+function renderAll() {
+  renderApp();
+}
+window.renderAll = renderAll;
 
 function renderBankBalances(fin) {
   const fmt = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -1469,6 +1534,228 @@ function restoreArchivedData() {
     populateMonthFilter();
     renderApp();
   }
+}
+
+// ==========================================
+// 1-CLICK EXCEL SETUP IMPORT & DOWNLOAD
+// ==========================================
+function downloadSetupExcelTemplate() {
+  const link = document.createElement("a");
+  link.href = "Dhruv_Financial_OS_Setup_Template.xlsx";
+  link.download = "Dhruv_Financial_OS_Setup_Template.xlsx";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Downloading Dhruv_Financial_OS_Setup_Template.xlsx...", "info");
+}
+
+async function handleExcelSetupUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (typeof XLSX === "undefined") {
+    showToast("Excel parser library is loading. Please try again in a moment.", "warning");
+    return;
+  }
+
+  showToast("Reading setup workbook...", "info");
+
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      let importCount = 0;
+
+      // 1. Opening_Balances
+      const openSheetName = workbook.SheetNames.find(s => /opening/i.test(s));
+      if (openSheetName) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[openSheetName], { header: 1 });
+        for (let i = 2; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+          const accName = String(row[0]).trim();
+          const openBal = parseFloat(row[2]) || 0;
+          const startDate = row[3] ? String(row[3]).trim() : null;
+
+          if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+            State.booksStartDate = startDate;
+            localStorage.setItem("tracker_books_start_date", startDate);
+            const dateInput = document.getElementById("booksStartDateInput");
+            if (dateInput) dateInput.value = startDate;
+          }
+
+          let acc = State.accounts.find(a => a.name.toLowerCase() === accName.toLowerCase());
+          if (!acc) {
+            acc = State.accounts.find(a => a.name.toLowerCase().includes(accName.toLowerCase()) || accName.toLowerCase().includes(a.name.toLowerCase()));
+          }
+          if (acc) {
+            acc.opening_balance = openBal;
+            importCount++;
+          }
+        }
+      }
+
+      // 2. Credit_Cards_Vault
+      const cardSheetName = workbook.SheetNames.find(s => /card/i.test(s));
+      if (cardSheetName) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[cardSheetName], { header: 1 });
+        for (let i = 2; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+          const cardName = String(row[0]).trim();
+          const issuer = row[1] ? String(row[1]).trim() : "Bank";
+          const network = row[2] ? String(row[2]).trim() : "Visa";
+          const last4 = row[3] ? String(row[3]).trim() : "";
+          const limit = parseFloat(row[4]) || 0;
+          const cycleDay = parseInt(row[5]) || 1;
+          const dueDate = row[6] ? String(row[6]).trim() : "";
+
+          // Vault credentials
+          const cardNum = row[7] ? String(row[7]).replace(/\s+/g, "").trim() : "";
+          const expiry = row[8] ? String(row[8]).trim() : "";
+          const cvv = row[9] ? String(row[9]).trim() : "";
+          const pin = row[10] ? String(row[10]).trim() : "";
+
+          let card = State.accounts.find(a => a.name.toLowerCase() === cardName.toLowerCase());
+          if (!card) {
+            card = State.accounts.find(a => a.name.toLowerCase().includes(cardName.toLowerCase()) || cardName.toLowerCase().includes(a.name.toLowerCase()));
+          }
+
+          if (card) {
+            card.credit_limit = limit || card.credit_limit;
+            card.billing_cycle_day = cycleDay || card.billing_cycle_day;
+            if (dueDate) card.payment_due_date = dueDate;
+            if (last4) card.last4 = last4;
+            if (network) card.network = network;
+          } else {
+            card = {
+              name: cardName,
+              type: "Credit Card",
+              color: "#4f46e5",
+              opening_balance: 0,
+              credit_limit: limit,
+              billing_cycle_day: cycleDay,
+              payment_due_date: dueDate || "2026-10-15",
+              last4: last4 || "••••",
+              network: network,
+              is_active: true
+            };
+            State.accounts.push(card);
+          }
+
+          if (cardNum || expiry || cvv || pin) {
+            if (!State.decryptedVault) State.decryptedVault = {};
+            State.decryptedVault[card.name] = {
+              cardNumber: cardNum || (State.decryptedVault[card.name] && State.decryptedVault[card.name].cardNumber) || "",
+              expiry: expiry || (State.decryptedVault[card.name] && State.decryptedVault[card.name].expiry) || "",
+              cvv: cvv || (State.decryptedVault[card.name] && State.decryptedVault[card.name].cvv) || "",
+              pin: pin || (State.decryptedVault[card.name] && State.decryptedVault[card.name].pin) || ""
+            };
+          }
+          importCount++;
+        }
+      }
+
+      // 3. Person_Ledgers
+      const personSheetName = workbook.SheetNames.find(s => /person/i.test(s));
+      if (personSheetName) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[personSheetName], { header: 1 });
+        if (!State.personOpeningBalances) State.personOpeningBalances = {};
+        for (let i = 2; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+          const personName = String(row[0]).trim();
+          const openBal = parseFloat(row[2]) || 0;
+          State.personOpeningBalances[personName] = openBal;
+
+          const paidCat = `${personName} - Paid`;
+          const reimbCat = `${personName} - Reimbursed`;
+          if (!State.categories.some(c => c.name === paidCat)) {
+            State.categories.push({ id: "cat_" + Date.now() + Math.random(), name: paidCat, type: "Expense", budget: 0 });
+          }
+          if (!State.categories.some(c => c.name === reimbCat)) {
+            State.categories.push({ id: "cat_" + Date.now() + Math.random(), name: reimbCat, type: "Income", budget: 0 });
+          }
+          importCount++;
+        }
+      }
+
+      // 4. Loans_and_EMIs
+      const emiSheetName = workbook.SheetNames.find(s => /emi|loan/i.test(s));
+      if (emiSheetName) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[emiSheetName], { header: 1 });
+        const newEmis = [];
+        for (let i = 2; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+          const name = String(row[0]).trim();
+          const card = row[1] ? String(row[1]).trim() : "Credit Card";
+          const orig = parseFloat(row[2]) || 0;
+          const monthly = parseFloat(row[3]) || 0;
+          const tenure = parseInt(row[4]) || 12;
+          const remaining = parseInt(row[6]) !== undefined ? parseInt(row[6]) : tenure;
+          const status = row[7] ? String(row[7]).trim() : "Active";
+          newEmis.push({
+            name: name,
+            card: card,
+            original_amount: orig,
+            monthly_emi: monthly,
+            total_tenure: tenure,
+            months_remaining: remaining,
+            status: status
+          });
+          importCount++;
+        }
+        if (newEmis.length > 0) {
+          State.emiSchedule = newEmis;
+          localStorage.setItem("tracker_emi_schedule", JSON.stringify(State.emiSchedule));
+        }
+      }
+
+      // 5. Budget_Categories
+      const catSheetName = workbook.SheetNames.find(s => /category|budget/i.test(s));
+      if (catSheetName) {
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[catSheetName], { header: 1 });
+        for (let i = 2; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+          const catName = String(row[0]).trim();
+          const catType = row[1] ? String(row[1]).trim() : "Expense";
+          const budget = parseFloat(row[2]) || 0;
+          let cat = State.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+          if (cat) {
+            cat.budget = budget;
+          } else {
+            State.categories.push({ id: "cat_" + Date.now() + Math.random(), name: catName, type: catType, budget: budget });
+          }
+        }
+      }
+
+      // Persist to localStorage
+      localStorage.setItem("tracker_accounts", JSON.stringify(State.accounts));
+      const accOpenings = {};
+      State.accounts.forEach(a => accOpenings[a.name] = a.opening_balance || 0);
+      localStorage.setItem("tracker_account_openings", JSON.stringify(accOpenings));
+      localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
+      localStorage.setItem("tracker_categories", JSON.stringify(State.categories));
+
+      if (typeof saveEncryptedVaultToStorage === "function") {
+        saveEncryptedVaultToStorage();
+      }
+
+      showToast(`✓ Excel Setup Imported! Configured ${importCount} items successfully.`, "success");
+      closeBooksSetupModal();
+      populateMonthFilter();
+      renderApp();
+
+      event.target.value = "";
+    } catch (err) {
+      console.error("Excel import error:", err);
+      showToast("Error importing Excel file: " + (err.message || "Invalid format"), "danger");
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // ==========================================
@@ -3284,8 +3571,187 @@ async function decryptAllCardVaults() {
 }
 
 // ==============================================================================
-// TIER-1 PRIVACY-SAFE QUICK LOG
+// TIER-1 PRIVACY-SAFE QUICK LOG (iOS BOTTOM PULL-SHEET & 2-TAP QUICK LOG)
 // ==============================================================================
+function toggleQuickLogSelect(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const isHidden = el.style.display === "none" || !el.style.display;
+  el.style.display = isHidden ? "block" : "none";
+  if (isHidden) {
+    el.focus();
+  }
+}
+
+function resolveAccountForChip(matchKey) {
+  if (!State.accounts || State.accounts.length === 0) return matchKey;
+  const key = matchKey.toLowerCase();
+  if (key === "hdfc") {
+    const acc = State.accounts.find(a => /hdfc\s+bank/i.test(a.name)) || State.accounts.find(a => /hdfc/i.test(a.name));
+    if (acc) return acc.name;
+  } else if (key === "kotak") {
+    const acc = State.accounts.find(a => /kotak/i.test(a.name));
+    if (acc) return acc.name;
+  } else if (key.includes("amazon")) {
+    const acc = State.accounts.find(a => /amazon/i.test(a.name));
+    if (acc) return acc.name;
+  } else if (key.includes("amex")) {
+    const acc = State.accounts.find(a => /amex|american express/i.test(a.name));
+    if (acc) return acc.name;
+  } else if (key === "cash") {
+    const acc = State.accounts.find(a => /^cash$/i.test(a.name)) || State.accounts.find(a => /cash/i.test(a.name));
+    if (acc) return acc.name;
+  }
+  const fallback = State.accounts.find(a => a.name.toLowerCase().includes(key));
+  return fallback ? fallback.name : matchKey;
+}
+
+function resolveCategoryForChip(matchKey) {
+  if (!State.categories || State.categories.length === 0) return matchKey;
+  const key = matchKey.toLowerCase();
+  if (key === "food") {
+    const cat = State.categories.find(c => /food/i.test(c.name));
+    if (cat) return cat.name;
+  } else if (key === "grocery") {
+    const cat = State.categories.find(c => /grocer/i.test(c.name));
+    if (cat) return cat.name;
+  } else if (key === "fuel") {
+    const cat = State.categories.find(c => /fuel/i.test(c.name) && c.type !== "Income");
+    if (cat) return cat.name;
+  } else if (key === "travel") {
+    const cat = State.categories.find(c => /transport|travel/i.test(c.name));
+    if (cat) return cat.name;
+  } else if (key === "shopping") {
+    const cat = State.categories.find(c => /shopping/i.test(c.name));
+    if (cat) return cat.name;
+  } else if (key === "bills") {
+    const cat = State.categories.find(c => /^bills?$/i.test(c.name)) || State.categories.find(c => /internet|utility|recharge/i.test(c.name));
+    if (cat) return cat.name;
+    return "Bills";
+  }
+  const fallback = State.categories.find(c => c.name.toLowerCase().includes(key));
+  return fallback ? fallback.name : matchKey;
+}
+
+function initQuickLogChips() {
+  const accountChips = document.querySelectorAll("#quickLogAccountChips .chip-btn");
+  accountChips.forEach(chip => {
+    const matchKey = chip.getAttribute("data-account-match") || (chip.textContent || "").trim();
+    const resolved = resolveAccountForChip(matchKey);
+    chip.dataset.targetValue = resolved;
+
+    chip.onclick = function() {
+      accountChips.forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      const accSelect = document.getElementById("quickLogAccountSelect");
+      if (accSelect) {
+        accSelect.value = resolved;
+        accSelect.style.display = "none";
+      }
+    };
+  });
+
+  const categoryChips = document.querySelectorAll("#quickLogCategoryChips .chip-btn");
+  categoryChips.forEach(chip => {
+    const matchKey = chip.getAttribute("data-category-match") || (chip.textContent || "").trim();
+    const resolved = resolveCategoryForChip(matchKey);
+    chip.dataset.targetValue = resolved;
+
+    chip.onclick = function() {
+      categoryChips.forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      const catSelect = document.getElementById("quickLogCategorySelect");
+      if (catSelect) {
+        catSelect.value = resolved;
+        catSelect.style.display = "none";
+      }
+    };
+  });
+
+  // Sync when fallback dropdowns change
+  const accSelect = document.getElementById("quickLogAccountSelect");
+  if (accSelect && !accSelect.dataset.listenerAttached) {
+    accSelect.dataset.listenerAttached = "true";
+    accSelect.addEventListener("change", function() {
+      const val = accSelect.value;
+      let matched = false;
+      accountChips.forEach(chip => {
+        if (chip.dataset.targetValue === val) {
+          chip.classList.add("active");
+          matched = true;
+        } else {
+          chip.classList.remove("active");
+        }
+      });
+      if (!matched) {
+        accountChips.forEach(chip => chip.classList.remove("active"));
+      }
+    });
+  }
+
+  const catSelect = document.getElementById("quickLogCategorySelect");
+  if (catSelect && !catSelect.dataset.listenerAttached) {
+    catSelect.dataset.listenerAttached = "true";
+    catSelect.addEventListener("change", function() {
+      const val = catSelect.value;
+      let matched = false;
+      categoryChips.forEach(chip => {
+        if (chip.dataset.targetValue === val) {
+          chip.classList.add("active");
+          matched = true;
+        } else {
+          chip.classList.remove("active");
+        }
+      });
+      if (!matched) {
+        categoryChips.forEach(chip => chip.classList.remove("active"));
+      }
+    });
+  }
+}
+
+function setupQuickLogPullDown() {
+  const modalContent = document.querySelector("#quickLogModal .modal-content");
+  if (!modalContent || modalContent.dataset.swipeSetup) return;
+  modalContent.dataset.swipeSetup = "true";
+
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+
+  const dragHandle = modalContent.querySelector(".sheet-drag-handle");
+  const header = modalContent.querySelector(".modal-header");
+  const targets = [dragHandle, header].filter(Boolean);
+
+  targets.forEach(target => {
+    target.addEventListener("touchstart", (e) => {
+      if (modalContent.scrollTop <= 0) {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+      }
+    }, { passive: true });
+
+    target.addEventListener("touchmove", (e) => {
+      if (!isDragging) return;
+      currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
+      if (diff > 0) {
+        modalContent.style.transform = `translateY(${diff}px)`;
+      }
+    }, { passive: true });
+
+    target.addEventListener("touchend", () => {
+      if (!isDragging) return;
+      isDragging = false;
+      const diff = currentY - startY;
+      modalContent.style.transform = "";
+      if (diff > 75) {
+        closeQuickLogModal();
+      }
+    }, { passive: true });
+  });
+}
+
 function openQuickLogModal() {
   const accSelect = document.getElementById("quickLogAccountSelect");
   if (accSelect) {
@@ -3293,39 +3759,87 @@ function openQuickLogModal() {
       .filter(a => a.is_active !== false)
       .map(a => `<option value="${a.name}">${a.name}</option>`)
       .join("");
+    accSelect.style.display = "none";
   }
 
   const catSelect = document.getElementById("quickLogCategorySelect");
   if (catSelect) {
     const expenseCats = State.categories.filter(c => c.type === "Expense" || c.type === "Debt");
-    catSelect.innerHTML = expenseCats
-      .map(c => `<option value="${c.name}">${c.name}</option>`)
-      .join("");
+    const hasBills = expenseCats.some(c => /^bills?$/i.test(c.name));
+    let optsHtml = expenseCats.map(c => `<option value="${c.name}">${c.name}</option>`).join("");
+    if (!hasBills) {
+      optsHtml += `<option value="Bills">Bills</option>`;
+    }
+    catSelect.innerHTML = optsHtml;
+    catSelect.style.display = "none";
   }
 
-  document.getElementById("quickLogAmountInput").value = "";
-  document.getElementById("quickLogDescInput").value = "";
+  // Bind and refresh chip values
+  initQuickLogChips();
 
-  document.getElementById("quickLogModal").classList.add("active");
+  // Reset inputs
+  const amtInput = document.getElementById("quickLogAmountInput");
+  if (amtInput) amtInput.value = "";
+  const descInput = document.getElementById("quickLogDescInput");
+  if (descInput) descInput.value = "";
+
+  // Set default active chips: HDFC and 🍔 Food
+  const firstAccChip = document.querySelector("#quickLogAccountChips .chip-btn");
+  if (firstAccChip) {
+    document.querySelectorAll("#quickLogAccountChips .chip-btn").forEach(c => c.classList.remove("active"));
+    firstAccChip.classList.add("active");
+    if (accSelect && firstAccChip.dataset.targetValue) {
+      accSelect.value = firstAccChip.dataset.targetValue;
+    }
+  }
+
+  const firstCatChip = document.querySelector("#quickLogCategoryChips .chip-btn");
+  if (firstCatChip) {
+    document.querySelectorAll("#quickLogCategoryChips .chip-btn").forEach(c => c.classList.remove("active"));
+    firstCatChip.classList.add("active");
+    if (catSelect && firstCatChip.dataset.targetValue) {
+      catSelect.value = firstCatChip.dataset.targetValue;
+    }
+  }
+
+  const modal = document.getElementById("quickLogModal");
+  if (modal) {
+    modal.classList.add("active");
+  }
+
+  setupQuickLogPullDown();
+
   setTimeout(() => {
     document.getElementById("quickLogAmountInput")?.focus();
   }, 100);
 }
 
 function closeQuickLogModal() {
-  document.getElementById("quickLogModal").classList.remove("active");
+  const modal = document.getElementById("quickLogModal");
+  if (modal) {
+    modal.classList.remove("active");
+  }
 }
 
 async function submitQuickLogTransaction() {
-  const amt = parseFloat(document.getElementById("quickLogAmountInput").value);
+  const amtInput = document.getElementById("quickLogAmountInput");
+  const amt = parseFloat(amtInput ? amtInput.value : "");
   if (!amt || amt <= 0) {
     showToast("Please enter a valid amount!", "warning");
+    amtInput?.focus();
     return;
   }
 
-  const account = document.getElementById("quickLogAccountSelect").value;
-  const category = document.getElementById("quickLogCategorySelect").value;
-  const desc = document.getElementById("quickLogDescInput").value.trim() || `${category} (Quick Log)`;
+  const activeAccChip = document.querySelector("#quickLogAccountChips .chip-btn.active");
+  const accSelect = document.getElementById("quickLogAccountSelect");
+  const account = (accSelect && accSelect.value) ? accSelect.value : (activeAccChip?.dataset.targetValue || "HDFC Bank Account");
+
+  const activeCatChip = document.querySelector("#quickLogCategoryChips .chip-btn.active");
+  const catSelect = document.getElementById("quickLogCategorySelect");
+  const category = (catSelect && catSelect.value) ? catSelect.value : (activeCatChip?.dataset.targetValue || "Food & Dining");
+
+  const descInput = document.getElementById("quickLogDescInput");
+  const desc = (descInput && descInput.value.trim()) || `${category} (Quick Log)`;
 
   const tx = {
     id: "tx_" + Date.now(),
