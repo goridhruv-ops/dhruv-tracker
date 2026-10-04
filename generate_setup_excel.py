@@ -101,12 +101,13 @@ headers2 = [
     "Full Card Number (Optional)", "Expiry MM/YY", "CVV", "ATM PIN", "Perks & Benefits"
 ]
 rows2 = [
-    ["American Express Credit Card", "Amex", "Amex", "4001", 360000, 8, "2026-10-26", "", "10/28", "", "", "MRCC Points, Fuel waiver, Milestones"],
-    ["ICICI - Amazon Pay Credit Card", "ICICI", "Visa", "3002", 120000, 23, "2026-10-12", "", "12/27", "", "", "5% Unlimited Amazon Cashback"],
-    ["ICICI - Coral Credit Card", "ICICI", "Visa", "2004", 100000, 21, "2026-10-10", "", "08/28", "", "", "Airport Lounge, BMS Buy 1 Get 1"],
-    ["Roar CC RuPay", "Roar", "RuPay", "5003", 150000, 21, "2026-10-09", "", "05/29", "", "", "UPI on Credit Card, Reward Points"],
-    ["HDFC - Money Back Plus Credit Card", "HDFC", "Visa", "1005", 69000, 16, "2026-10-05", "", "11/27", "", "", "HDFC Core Rewards, SmartBuy cashback"],
-    ["HDFC - Pixel Play Credit Card", "HDFC", "Visa", "9006", 15000, 16, "2026-10-05", "", "04/28", "", "", "Digital Custom Cashbacks (Zomato/Blinkit)"]
+    ["American Express Credit Card", "American Express", "Amex", "4001", 360000, 8, "2026-10-26", "", "10/28", "", "", "8th cycle, Due 26th of month"],
+    ["ICICI Bank Credit Card (Coral)", "ICICI Bank", "Visa", "2004", 100000, 2, "2026-10-20", "", "08/28", "", "", "2nd-3rd cycle, Due 19th-20th of month"],
+    ["Amazon Pay ICICI Bank Credit Card", "ICICI Bank", "Visa", "3002", 120000, 2, "2026-10-19", "", "12/27", "", "", "2nd-3rd cycle, Due 19th of month"],
+    ["HDFC Bank Pixel Play Credit Card", "HDFC Bank", "Visa", "9006", 15000, 1, "2026-10-21", "", "04/28", "", "", "1st-2nd cycle, Due 21st of month"],
+    ["HDFC Bank MoneyBack+ Credit Card", "HDFC Bank", "Visa", "1005", 69000, 12, "2026-11-02", "", "11/27", "", "", "12th cycle, Due 1st-2nd of following month"],
+    ["Roarbank Credit Card (Unity Small Finance Bank)", "Unity / Roar", "RuPay", "5003", 150000, 30, "2026-10-28", "", "05/29", "", "", "30th/1st cycle, Due 28th of following month"],
+    ["CheQ Credit Card (AU Small Finance Bank)", "AU Small Finance Bank", "Visa", "7007", 100000, 24, "2026-11-13", "", "09/29", "", "", "24th cycle, Due 13th of following month"]
 ]
 style_sheet(ws2, "💳 DHRUV FINANCIAL OS — UNIFIED CREDIT CARDS & VAULT CONFIGURATION", headers2, rows2)
 

@@ -356,6 +356,33 @@ async function loadData() {
   if (savedCustomAccounts) {
     try {
       State.accounts = JSON.parse(savedCustomAccounts);
+      // Seamlessly upgrade / sync new card definitions & schedules from INITIAL_DATA
+      if (window.INITIAL_DATA && window.INITIAL_DATA.accounts) {
+        window.INITIAL_DATA.accounts.forEach(initAcc => {
+          const existing = State.accounts.find(a => 
+            a.name === initAcc.name || 
+            (initAcc.aliases && initAcc.aliases.includes(a.name)) ||
+            (a.aliases && a.aliases.includes(initAcc.name))
+          );
+          if (!existing) {
+            State.accounts.push(JSON.parse(JSON.stringify(initAcc)));
+          } else {
+            existing.name = initAcc.name;
+            existing.statement_schedule = initAcc.statement_schedule;
+            existing.due_schedule = initAcc.due_schedule;
+            existing.billing_cycle_day = initAcc.billing_cycle_day;
+            existing.payment_due_day = initAcc.payment_due_day;
+            existing.payment_due_date = initAcc.payment_due_date;
+            existing.is_following_month = initAcc.is_following_month;
+            existing.theme_class = initAcc.theme_class || existing.theme_class;
+            existing.network = initAcc.network || existing.network;
+            existing.aliases = initAcc.aliases;
+            if (initAcc.credit_limit && (!existing.credit_limit || existing.credit_limit === 0)) {
+              existing.credit_limit = initAcc.credit_limit;
+            }
+          }
+        });
+      }
     } catch(e) {
       State.accounts = window.INITIAL_DATA ? JSON.parse(JSON.stringify(window.INITIAL_DATA.accounts)) : [];
     }
@@ -422,10 +449,14 @@ async function loadData() {
           };
         });
         State.accounts.forEach(a => {
-          if (State.cardBills[a.name]) {
-            if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
-            if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
-            if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+          const bill = State.cardBills[a.name] || Object.entries(State.cardBills).find(([k, v]) => 
+            a.name.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(a.name.toLowerCase()) ||
+            (a.aliases && a.aliases.some(alias => k.toLowerCase().includes(alias.toLowerCase())))
+          )?.[1];
+          if (bill) {
+            if (bill.due_date) a.payment_due_date = bill.due_date;
+            if (bill.total_due !== undefined) a.current_bill_amount = bill.total_due;
+            if (bill.is_paid !== undefined) a.is_bill_paid = bill.is_paid;
           }
         });
       }
@@ -1404,8 +1435,22 @@ function renderCreditCardTracker() {
     let dueDateStr = c.payment_due_date;
     if (!dueDateStr) {
       const activeYearMonth = State.activeMonth === "all" ? "2026-10" : State.activeMonth;
-      const dayStr = ("0" + (c.payment_due_day || 15)).slice(-2);
-      dueDateStr = `${activeYearMonth}-${dayStr}`;
+      const [yearStr, monthStr] = (activeYearMonth || "2026-10").split("-");
+      let year = parseInt(yearStr, 10);
+      let month = parseInt(monthStr, 10);
+
+      // If the due date is in the following month
+      const isNextMonth = c.is_following_month || (c.billing_cycle_day && c.payment_due_day && c.payment_due_day < c.billing_cycle_day);
+      if (isNextMonth) {
+        month += 1;
+        if (month > 12) {
+          month = 1;
+          year += 1;
+        }
+      }
+      const dueDay = ("0" + (c.payment_due_day || 15)).slice(-2);
+      const dueMonth = ("0" + month).slice(-2);
+      dueDateStr = `${year}-${dueMonth}-${dueDay}`;
     }
 
     const dueObj = new Date(dueDateStr + "T00:00:00");
@@ -1447,7 +1492,7 @@ function renderCreditCardTracker() {
         <div class="card-top-row">
           <div class="card-bank-info">
             <span class="card-bank-name">${c.name}</span>
-            <span class="card-type-tag">Cycle: ${formatDayOrdinal(c.billing_cycle_day || 1)} of month</span>
+            <span class="card-type-tag">Cycle: ${c.statement_schedule || (formatDayOrdinal(c.billing_cycle_day || 1) + " of month")}</span>
           </div>
           <div class="card-network-logo">${network}</div>
         </div>
@@ -1503,8 +1548,11 @@ function renderCreditCardTracker() {
           </div>
 
           <div class="card-stats-split" style="margin-bottom:0.65rem;">
-            <span>${dueBadgeHtml}</span>
-            <span style="font-size:0.75rem; opacity:0.85;">Limit: <strong class="card-limit-val privacy-sensitive">₹${(c.credit_limit || 0).toLocaleString("en-IN")}</strong></span>
+            <div>
+              <span>${dueBadgeHtml}</span>
+              ${c.due_schedule ? `<div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px; font-weight:500;">Due: ${c.due_schedule}</div>` : ''}
+            </div>
+            <span style="font-size:0.75rem; opacity:0.85; text-align:right;">Limit: <strong class="card-limit-val privacy-sensitive">₹${(c.credit_limit || 0).toLocaleString("en-IN")}</strong></span>
           </div>
 
           <!-- Quick Actions -->
@@ -3615,8 +3663,11 @@ function renderCardDueDatesSummaryTable() {
     return `
       <tr>
         <td><strong>${c.name}</strong></td>
-        <td>${formatDayOrdinal(c.billing_cycle_day || 1)} of month</td>
-        <td><strong>${formatPrettyDate(dueDateStr)}</strong></td>
+        <td>${c.statement_schedule || (formatDayOrdinal(c.billing_cycle_day || 1) + " of month")}</td>
+        <td>
+          <strong>${c.due_schedule || formatPrettyDate(dueDateStr)}</strong>
+          ${c.due_schedule && dueDateStr ? `<div style="font-size:0.72rem; color:var(--text-muted);">${formatPrettyDate(dueDateStr)}</div>` : ''}
+        </td>
         <td>${statusPill}</td>
         <td style="font-weight:700; color:${isPaid ? 'var(--income)' : 'var(--expense)'}">₹${Math.round(billAmt).toLocaleString("en-IN")}</td>
         <td>
@@ -4564,7 +4615,9 @@ function getCardDefaultTheme(cardName) {
   if (n.includes("amex") || n.includes("american")) return "card-theme-amex";
   if (n.includes("coral")) return "card-theme-icici-coral";
   if (n.includes("amazon")) return "card-theme-icici-amazon";
-  if (n.includes("roar") || n.includes("rupay")) return "card-theme-roar";
+  if (n.includes("pixel")) return "card-theme-pixel";
+  if (n.includes("cheq") || n.includes("au small") || n.includes("au bank")) return "card-theme-cheq";
+  if (n.includes("roar") || n.includes("rupay") || n.includes("unity")) return "card-theme-roar";
   if (n.includes("hdfc")) return "card-theme-hdfc";
   if (n.includes("kotak")) return "card-theme-kotak";
   return "card-theme-default";

@@ -2256,6 +2256,12 @@ table.data-table tbody tr:last-child td {
 .card-theme-roar {
   background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #312e81 100%);
 }
+.card-theme-cheq {
+  background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #6366f1 100%);
+}
+.card-theme-pixel {
+  background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 50%, #3b82f6 100%);
+}
 .card-theme-hdfc {
   background: linear-gradient(135deg, #0c4a6e 0%, #0284c7 50%, #0369a1 100%);
 }

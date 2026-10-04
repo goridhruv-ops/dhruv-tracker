@@ -715,31 +715,36 @@ function detectAccount(from, subject, body) {
     return "American Express Credit Card";
   }
 
-  // 2. Roar CC Rupay / Unity Bank
+  // 2. Roarbank / Unity Small Finance Bank
   if (text.indexOf("roar") !== -1 || text.indexOf("unity bank") !== -1 || text.indexOf("unity small finance") !== -1) {
-    return "Roar CC Rupay";
+    return "Roarbank Credit Card (Unity Small Finance Bank)";
   }
 
   // 3. ICICI Credit Cards
   if (text.indexOf("coral") !== -1) {
-    return "ICICI - Coral Credit Card";
+    return "ICICI Bank Credit Card (Coral)";
   }
   if (text.indexOf("amazon pay") !== -1 || (text.indexOf("icici") !== -1 && text.indexOf("amazon") !== -1)) {
-    return "ICICI - Amazon Pay Credit Card";
+    return "Amazon Pay ICICI Bank Credit Card";
   }
   if (from.indexOf("credit_cards@icicibank.com") !== -1 || (text.indexOf("icici") !== -1 && text.indexOf("credit card") !== -1)) {
-    return "ICICI - Amazon Pay Credit Card";
+    return "Amazon Pay ICICI Bank Credit Card";
   }
 
   // 4. HDFC Credit Cards
   if (text.indexOf("pixel") !== -1) {
-    return "HDFC - Pixel Play Credit Card";
+    return "HDFC Bank Pixel Play Credit Card";
   }
   if (text.indexOf("money back") !== -1 || text.indexOf("moneyback") !== -1) {
-    return "HDFC - Money Back Plus Credit Card";
+    return "HDFC Bank MoneyBack+ Credit Card";
   }
   if (text.indexOf("hdfc") !== -1 && text.indexOf("credit card") !== -1) {
-    return "HDFC - Money Back Plus Credit Card";
+    return "HDFC Bank MoneyBack+ Credit Card";
+  }
+
+  // 5. CheQ / AU Small Finance Bank
+  if (text.indexOf("cheq") !== -1 || text.indexOf("au small finance") !== -1 || text.indexOf("aubank") !== -1) {
+    return "CheQ Credit Card (AU Small Finance Bank)";
   }
 
   // 5. Kotak Mahindra Bank
@@ -859,13 +864,14 @@ function autoClassify(merchant, isCredit, subject, body) {
 
   // 3. CARD BILL PAYMENTS (Transfer)
   if (m.indexOf("bill payment") !== -1 || m.indexOf("cc payment") !== -1 || m.indexOf("card payment") !== -1 || m.indexOf("credit card bill") !== -1) {
-    if (m.indexOf("amazon") !== -1) return { type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", to_account: "ICICI - Amazon Pay Credit Card", isKnown: true };
-    if (m.indexOf("coral") !== -1) return { type: "Transfer", category: "Card Bill Payment - ICICI - Coral", to_account: "ICICI - Coral Credit Card", isKnown: true };
+    if (m.indexOf("amazon") !== -1) return { type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", to_account: "Amazon Pay ICICI Bank Credit Card", isKnown: true };
+    if (m.indexOf("coral") !== -1) return { type: "Transfer", category: "Card Bill Payment - ICICI - Coral", to_account: "ICICI Bank Credit Card (Coral)", isKnown: true };
     if (m.indexOf("amex") !== -1 || m.indexOf("american express") !== -1) return { type: "Transfer", category: "Card Bill Payment - American Express", to_account: "American Express Credit Card", isKnown: true };
-    if (m.indexOf("pixel") !== -1) return { type: "Transfer", category: "Card Bill Payment - HDFC - Pixel Play", to_account: "HDFC - Pixel Play Credit Card", isKnown: true };
-    if (m.indexOf("moneyback") !== -1 || m.indexOf("money back") !== -1) return { type: "Transfer", category: "Card Bill Payment - HDFC - Money Back Plus", to_account: "HDFC - Money Back Plus Credit Card", isKnown: true };
-    if (m.indexOf("roar") !== -1 || m.indexOf("unity") !== -1) return { type: "Transfer", category: "Card Bill Payment - Unity - Roar", to_account: "Roar CC Rupay", isKnown: true };
-    return { type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", to_account: "ICICI - Amazon Pay Credit Card", isKnown: true };
+    if (m.indexOf("pixel") !== -1) return { type: "Transfer", category: "Card Bill Payment - HDFC - Pixel Play", to_account: "HDFC Bank Pixel Play Credit Card", isKnown: true };
+    if (m.indexOf("moneyback") !== -1 || m.indexOf("money back") !== -1) return { type: "Transfer", category: "Card Bill Payment - HDFC - Money Back Plus", to_account: "HDFC Bank MoneyBack+ Credit Card", isKnown: true };
+    if (m.indexOf("roar") !== -1 || m.indexOf("unity") !== -1) return { type: "Transfer", category: "Card Bill Payment - Unity - Roar", to_account: "Roarbank Credit Card (Unity Small Finance Bank)", isKnown: true };
+    if (m.indexOf("cheq") !== -1 || m.indexOf("au bank") !== -1 || m.indexOf("au small finance") !== -1) return { type: "Transfer", category: "Card Bill Payment - CheQ AU", to_account: "CheQ Credit Card (AU Small Finance Bank)", isKnown: true };
+    return { type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", to_account: "Amazon Pay ICICI Bank Credit Card", isKnown: true };
   }
 
   // 4. DEBT & EMIs
