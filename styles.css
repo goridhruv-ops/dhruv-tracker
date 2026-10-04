@@ -2137,6 +2137,29 @@ table.data-table tbody tr:last-child td {
   transform: scale(0.96);
 }
 
+.btn-reset-pin-subtle {
+  display: block;
+  width: 100%;
+  max-width: 290px;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-reset-pin-subtle:hover,
+.btn-reset-pin-subtle:active {
+  color: var(--primary);
+}
+
 @media (max-height: 680px) {
   .lock-card {
     gap: 0.75rem;

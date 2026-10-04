@@ -58,14 +58,15 @@ const State = {
 
 // Known Merchant Classification Rules (Hybrid Rule)
 const MERCHANT_RULES = [
-  { match: ["swiggy", "zomato", "mcdonald", "starbucks", "burger king", "domino", "kfc", "restaurant", "cafe", "chutney", "frankie", "juice", "pastry", "cake", "dining", "eats", "lunch", "dinner", "pizza"], type: "Expense", category: "Food & Dining", isKnown: true },
+  { match: ["swiggy", "zomato", "mcdonald", "mc donald", "starbucks", "burger king", "domino", "kfc", "subway", "haldiram", "restaurant", "cafe", "chutney", "frankie", "juice", "pastry", "cake", "dining", "eats", "lunch", "dinner", "pizza"], type: "Expense", category: "Food & Dining", isKnown: true },
+  { match: ["recharge", "airtel", "jio", "vodafone", "vi ", "bsnl"], type: "Expense", category: "Mobile Recharge (own 2 numbers)", isKnown: true },
+  { match: ["broadband", "wifi", "act fibernet"], type: "Expense", category: "Internet", isKnown: true },
   { match: ["hpcl", "bpcl", "iocl", "petrol", "fuel", "shell", "indian oil", "bharat petroleum", "cng"], type: "Expense", category: "Fuel", isKnown: true },
   { match: ["blinkit", "zepto", "instamart", "bigbasket", "dmart", "grocer", "supermarket", "reliance fresh"], type: "Expense", category: "Groceries", isKnown: true },
   { match: ["spotify", "netflix", "bookmyshow", "apple", "icloud", "prime video", "youtube", "hotstar", "cinema", "movie", "pvr", "inox"], type: "Expense", category: "Entertainment", isKnown: true },
   { match: ["amazon", "flipkart", "myntra", "ajio", "zara", "h&m", "uniqlo", "nykaa", "tata cliq", "meesho"], type: "Expense", category: "Shopping", isKnown: true },
   { match: ["apollo", "pharmeasy", "1mg", "hospital", "clinic", "pharmacy", "medical", "doctor", "health", "netmeds"], type: "Expense", category: "Medical", isKnown: true },
-  { match: ["uber", "ola", "rapido", "irctc", "railway", "train", "flight", "indigo", "akasa", "fastag", "toll"], type: "Expense", category: "Transport", isKnown: true },
-  { match: ["recharge", "airtel", "jio", "vodafone", "vi ", "bsnl"], type: "Expense", category: "Mobile Recharge (own 2 numbers)", isKnown: true },
+  { match: ["uber", "ola", "rapido", "irctc", "railway", "train", "flight", "indigo", "akasa", "fastag", "toll plaza", "toll booth"], type: "Expense", category: "Transport", isKnown: true },
   { match: ["card bill payment", "cc payment", "credit card payment", "credit card bill"], type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", isKnown: true },
   { match: ["emi", "loan", "installment"], type: "Debt", category: "Loan / EMI Payment", isKnown: true },
   { match: ["zerodha", "groww", "angel", "stocks", "upstox"], type: "Savings", category: "Stocks", isKnown: true },
@@ -4162,11 +4163,46 @@ async function verifyEnteredPin() {
   }
 }
 
+async function resetPinToDefault() {
+  if (!confirm("Reset Passcode to default 1234 across all devices?")) return;
+  const defaultSalt = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const defaultHash = "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23";
+
+  State.security.pinHash = defaultHash;
+  State.security.pinSalt = defaultSalt;
+  State.security.pinEnabled = true;
+  localStorage.setItem("tracker_pin_hash", defaultHash);
+  localStorage.setItem("tracker_pin_salt", defaultSalt);
+  localStorage.setItem("tracker_pin_enabled", "true");
+
+  if (State.supabase) {
+    try {
+      await State.supabase.from("settings").upsert({
+        key: "app_security",
+        value: {
+          pinHash: defaultHash,
+          pinSalt: defaultSalt,
+          pinEnabled: true,
+          updatedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+    } catch (e) {
+      console.warn("Could not sync default PIN to Supabase:", e);
+    }
+  }
+
+  State.security.activePinBuffer = "";
+  updatePinDots();
+  showToast("Passcode reset to 1234! Enter 1234 to unlock.", "info");
+}
+
 window.handleHeaderLockClick = handleHeaderLockClick;
 window.openPasscodeSetupModal = openPasscodeSetupModal;
 window.closePasscodeSetupModal = closePasscodeSetupModal;
 window.savePasscodeFromModal = savePasscodeFromModal;
 window.updateHeaderLockButton = updateHeaderLockButton;
+window.resetPinToDefault = resetPinToDefault;
 
 function initAutoLock() {
   ["mousemove", "keydown", "touchstart", "scroll", "click"].forEach(ev => {

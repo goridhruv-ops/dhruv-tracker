@@ -897,11 +897,21 @@ function autoClassify(merchant, isCredit, subject, body) {
 
   // 7. KNOWN VERIFIED EXPENSES (Auto-Approved)
   if (m.indexOf("swiggy") !== -1 || m.indexOf("zomato") !== -1 || m.indexOf("mcdonald") !== -1 || 
-      m.indexOf("starbucks") !== -1 || m.indexOf("burger king") !== -1 || m.indexOf("domino") !== -1 || 
-      m.indexOf("kfc") !== -1 || m.indexOf("restaurant") !== -1 || m.indexOf("cafe") !== -1 || 
+      m.indexOf("mc donald") !== -1 || m.indexOf("starbucks") !== -1 || m.indexOf("burger king") !== -1 || 
+      m.indexOf("domino") !== -1 || m.indexOf("kfc") !== -1 || m.indexOf("subway") !== -1 ||
+      m.indexOf("haldiram") !== -1 || m.indexOf("restaurant") !== -1 || m.indexOf("cafe") !== -1 || 
       m.indexOf("chutney") !== -1 || m.indexOf("frankie") !== -1 || m.indexOf("juice") !== -1 ||
       m.indexOf("pizza") !== -1 || m.indexOf("bakery") !== -1 || m.indexOf("chai") !== -1 || m.indexOf("coffee") !== -1) {
     return { type: "Expense", category: "Food & Dining", isKnown: true };
+  }
+
+  if (m.indexOf("recharge") !== -1 || m.indexOf("airtel") !== -1 || m.indexOf("jio") !== -1 || 
+      m.indexOf("vodafone") !== -1 || m.indexOf("vi ") !== -1 || m.indexOf("bsnl") !== -1) {
+    return { type: "Expense", category: "Mobile Recharge (own 2 numbers)", isKnown: true };
+  }
+
+  if (m.indexOf("broadband") !== -1 || m.indexOf("wifi") !== -1 || m.indexOf("act fibernet") !== -1) {
+    return { type: "Expense", category: "Internet", isKnown: true };
   }
 
   if (m.indexOf("hpcl") !== -1 || m.indexOf("bpcl") !== -1 || m.indexOf("iocl") !== -1 || 
@@ -936,20 +946,13 @@ function autoClassify(merchant, isCredit, subject, body) {
     return { type: "Expense", category: "Medical", isKnown: true };
   }
 
+  // Transport: strictly avoid matching "toll free" or bank disclaimer text
+  var hasToll = (m.indexOf("toll plaza") !== -1 || m.indexOf("toll tax") !== -1 || (m.indexOf("toll") !== -1 && m.indexOf("toll free") === -1 && m.indexOf("toll-free") === -1));
   if (m.indexOf("uber") !== -1 || m.indexOf("ola") !== -1 || m.indexOf("rapido") !== -1 || 
       m.indexOf("irctc") !== -1 || m.indexOf("indigo") !== -1 || m.indexOf("railway") !== -1 ||
-      m.indexOf("flight") !== -1 || m.indexOf("fastag") !== -1 || m.indexOf("toll") !== -1 ||
+      m.indexOf("flight") !== -1 || m.indexOf("fastag") !== -1 || hasToll ||
       m.indexOf("metro") !== -1) {
     return { type: "Expense", category: "Transport", isKnown: true };
-  }
-
-  if (m.indexOf("recharge") !== -1 || m.indexOf("airtel") !== -1 || m.indexOf("jio") !== -1 || 
-      m.indexOf("vodafone") !== -1 || m.indexOf("vi ") !== -1 || m.indexOf("bsnl") !== -1) {
-    return { type: "Expense", category: "Mobile Recharge (own 2 numbers)", isKnown: true };
-  }
-
-  if (m.indexOf("broadband") !== -1 || m.indexOf("wifi") !== -1 || m.indexOf("act fibernet") !== -1) {
-    return { type: "Expense", category: "Internet", isKnown: true };
   }
 
   // 8. FALLBACK (Pending Review)

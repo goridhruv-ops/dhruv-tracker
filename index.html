@@ -7,14 +7,14 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Dhruv's Financial OS | Modern Budget Tracker</title>
-  <link rel="stylesheet" href="styles.css?v=20261001_v7">
+  <link rel="stylesheet" href="styles.css?v=20261004_v1">
   
   <!-- Supabase & Chart.js CDNs (GitHub Pages Ready) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Pre-loaded Clean Setup for 1st October Fresh Start -->
-  <script src="initial_data.js?v=20261001_v6"></script>
+  <script src="initial_data.js?v=20261004_v1"></script>
 
   <!-- Lucide Vector Micro-Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -108,6 +108,9 @@
       <button type="button" class="btn-quick-log-trigger" onclick="openQuickLogModal()">
         <span class="quick-log-icon">⚡</span>
         <span>Quick Log Spend <span class="quick-log-sub">(No Passcode Needed)</span></span>
+      </button>
+      <button type="button" class="btn-reset-pin-subtle" onclick="resetPinToDefault()">
+        Forgot or Desynced PIN? Reset to 1234
       </button>
     </div>
   </div>
@@ -1518,6 +1521,6 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Core Controller Script -->
-  <script src="app.js?v=20261001_v7"></script>
+  <script src="app.js?v=20261004_v1"></script>
 </body>
 </html>
