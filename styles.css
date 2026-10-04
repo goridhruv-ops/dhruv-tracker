@@ -3249,10 +3249,6 @@ table.data-table tbody tr:last-child td {
     font-size: 0.68rem !important;
   }
 
-  .metric-sub {
-    font-size: 0.6rem !important;
-  }
-
   .solvency-grid {
     grid-template-columns: 1fr !important;
   }
