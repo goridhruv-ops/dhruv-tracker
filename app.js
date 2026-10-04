@@ -5,6 +5,11 @@
  * ==============================================================================
  */
 
+function cleanSupabaseUrl(rawUrl) {
+  if (!rawUrl) return "";
+  return String(rawUrl).trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
+}
+
 // Global Application State
 const State = {
   booksStartDate: localStorage.getItem("tracker_books_start_date") || (window.INITIAL_DATA ? window.INITIAL_DATA.booksStartDate : "2026-10-01"),
@@ -18,8 +23,8 @@ const State = {
   rollovers: {},
   supabase: null,
   supabaseConfig: {
-    url: localStorage.getItem("tracker_sb_url") || "",
-    key: localStorage.getItem("tracker_sb_key") || ""
+    url: cleanSupabaseUrl(localStorage.getItem("tracker_sb_url") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && window.INITIAL_DATA.supabaseConfig.url) || ""),
+    key: String(localStorage.getItem("tracker_sb_key") || (window.INITIAL_DATA && window.INITIAL_DATA.supabaseConfig && (window.INITIAL_DATA.supabaseConfig.anonKey || window.INITIAL_DATA.supabaseConfig.key)) || "").trim()
   },
   geminiApiKey: localStorage.getItem("tracker_gemini_key") || "",
   charts: {
@@ -35,10 +40,9 @@ const State = {
   isSmartBannerDismissed: sessionStorage.getItem("tracker_banner_dismissed") === "true",
   themeMode: localStorage.getItem("tracker_theme_mode") || "system", // 'system' | 'dark' | 'light'
   security: {
-    pinEnabled: localStorage.getItem("tracker_pin_enabled") === "true",
-    pinHash: localStorage.getItem("tracker_pin_hash") || "",
-    pinSalt: localStorage.getItem("tracker_pin_salt") || "",
-    bioEnabled: localStorage.getItem("tracker_bio_enabled") === "true",
+    pinEnabled: localStorage.getItem("tracker_pin_enabled") !== "false",
+    pinHash: localStorage.getItem("tracker_pin_hash") || (window.INITIAL_DATA?.security?.pinHash || "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23"),
+    pinSalt: localStorage.getItem("tracker_pin_salt") || (window.INITIAL_DATA?.security?.pinSalt || "a1b2c3d4e5f60718293a4b5c6d7e8f90"),
     autoLockTimeout: localStorage.getItem("tracker_autolock_timeout") || "180000",
     isLocked: false,
     activePinBuffer: "",
@@ -63,21 +67,19 @@ const MERCHANT_RULES = [
   { match: ["uber", "ola", "rapido", "irctc", "railway", "train", "flight", "indigo", "akasa", "fastag", "toll"], type: "Expense", category: "Transport", isKnown: true },
   { match: ["recharge", "airtel", "jio", "vodafone", "vi ", "bsnl"], type: "Expense", category: "Mobile Recharge (own 2 numbers)", isKnown: true },
   { match: ["card bill payment", "cc payment", "credit card payment", "credit card bill"], type: "Transfer", category: "Card Bill Payment - ICICI - Amazon Pay", isKnown: true },
-  { match: ["iphone"], type: "Debt", category: "iPhone 17 Pro EMI", isKnown: true },
-  { match: ["watch emi"], type: "Debt", category: "Watch EMI", isKnown: true },
-  { match: ["scooter", "l&t finance", "l&t"], type: "Debt", category: "Scooter Loan (L&T Finance)", isKnown: true },
+  { match: ["emi", "loan", "installment"], type: "Debt", category: "Loan / EMI Payment", isKnown: true },
   { match: ["zerodha", "groww", "angel", "stocks", "upstox"], type: "Savings", category: "Stocks", isKnown: true },
   { match: ["mutual fund", "sip", "uti", "hdfc mf", "nippon"], type: "Savings", category: "Mutual Funds", isKnown: true },
   { match: ["salary", "paycheck", "bismarck salary", "payroll"], type: "Income", category: "Paycheck (Bismarck Salary)", isKnown: true }
 ];
 
 // Initialize on DOM Ready
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   initPrivacyMode();
-  initSecurity();
   initSupabase();
-  loadData();
+  await initSecurity();
+  await loadData();
   setupEventListeners();
   populateMonthFilter();
   renderApp();
@@ -174,9 +176,45 @@ function togglePrivacyMode() {
   showToast(next ? "Privacy Blur Activated (Public Mode)" : "Privacy Blur Disabled");
 }
 
+let realtimeChannel = null;
+
+function setupSupabaseRealtime() {
+  if (!State.supabase) return;
+  if (realtimeChannel) {
+    try { State.supabase.removeChannel(realtimeChannel); } catch (e) {}
+  }
+
+  try {
+    realtimeChannel = State.supabase
+      .channel("public-db-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, (payload) => {
+        console.log("⚡ Realtime: transaction changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, (payload) => {
+        console.log("⚡ Realtime: settings changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "card_bills" }, (payload) => {
+        console.log("⚡ Realtime: card_bills changed in Supabase cloud", payload);
+        loadData().then(() => renderApp());
+      })
+      .subscribe((status) => {
+        console.log("Supabase Realtime channel status:", status);
+      });
+  } catch (err) {
+    console.warn("Could not attach Supabase Realtime channel:", err);
+  }
+}
+
 // Supabase Initialization
 function initSupabase() {
-  const { url, key } = State.supabaseConfig;
+  let { url, key } = State.supabaseConfig;
+  url = cleanSupabaseUrl(url);
+  key = (key || "").trim();
+  State.supabaseConfig.url = url;
+  State.supabaseConfig.key = key;
+
   const statusEl = document.getElementById("syncStatusBadge");
   
   if (url && key && window.supabase) {
@@ -188,6 +226,7 @@ function initSupabase() {
         statusEl.style.color = "#fff";
         statusEl.innerHTML = "● Supabase Connected";
       }
+      setupSupabaseRealtime();
       return true;
     } catch (e) {
       console.error("Supabase init error:", e);
@@ -203,16 +242,96 @@ function initSupabase() {
   return false;
 }
 
-// Load Data
+// Load Data with Full Cloud Synchronization
 async function loadData() {
   const localSaved = localStorage.getItem("tracker_transactions");
-  
+
+  // 1. Synchronize Books Setup (Start Date, Opening Balances, Person Balances) from Supabase
   if (State.supabase) {
     try {
-      const { data: txs, error } = await State.supabase.from("transactions").select("*").gte("date", State.booksStartDate).order("date", { ascending: false });
+      const { data: bsData, error: bsErr } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "books_setup")
+        .maybeSingle();
+
+      if (!bsErr && bsData && bsData.value) {
+        const val = bsData.value;
+        if (val.startDate) {
+          State.booksStartDate = val.startDate;
+          localStorage.setItem("tracker_books_start_date", val.startDate);
+        }
+        if (val.accOpenings) {
+          localStorage.setItem("tracker_account_openings", JSON.stringify(val.accOpenings));
+        }
+        if (val.personOpenings) {
+          State.personOpeningBalances = { ...State.personOpeningBalances, ...val.personOpenings };
+          localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
+        }
+        if (val.rollovers) {
+          State.rollovers = { ...State.rollovers, ...val.rollovers };
+          localStorage.setItem("tracker_rollovers", JSON.stringify(State.rollovers));
+        }
+      } else if (!bsErr && (!bsData || !bsData.value)) {
+        // Seed local books setup to Supabase if not yet configured in cloud
+        const localStartDate = localStorage.getItem("tracker_books_start_date") || State.booksStartDate;
+        const localAccOpenings = localStorage.getItem("tracker_account_openings") ? JSON.parse(localStorage.getItem("tracker_account_openings")) : null;
+        const localPersonOpenings = localStorage.getItem("tracker_person_opening_balances") ? JSON.parse(localStorage.getItem("tracker_person_opening_balances")) : null;
+        const localRollovers = localStorage.getItem("tracker_rollovers") ? JSON.parse(localStorage.getItem("tracker_rollovers")) : State.rollovers;
+        if (localAccOpenings || localStartDate || localRollovers) {
+          await State.supabase.from("settings").upsert({
+            key: "books_setup",
+            value: {
+              startDate: localStartDate,
+              accOpenings: localAccOpenings || {},
+              personOpenings: localPersonOpenings || {},
+              rollovers: localRollovers || {},
+              updatedAt: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          }, { onConflict: "key" });
+        }
+      }
+    } catch (e) {
+      console.warn("Books setup cloud sync notice:", e);
+    }
+  }
+
+  // 2. Synchronize Transactions from Supabase
+  if (State.supabase) {
+    try {
+      const { data: txs, error } = await State.supabase
+        .from("transactions")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(1000);
+
       if (!error && txs) {
-        State.transactions = txs;
-        saveLocalTransactions(txs);
+        if (txs.length === 0 && localSaved) {
+          // If cloud is empty but this device has local transactions, migrate them to cloud!
+          try {
+            const parsedLocal = JSON.parse(localSaved);
+            if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+              const eligible = parsedLocal.filter(t => t.date);
+              if (eligible.length > 0) {
+                console.log("Migrating local transactions to Supabase cloud:", eligible.length);
+                for (const t of eligible) {
+                  await State.supabase.from("transactions").upsert(t);
+                }
+                State.transactions = eligible;
+              } else {
+                State.transactions = [];
+              }
+            } else {
+              State.transactions = [];
+            }
+          } catch (pe) {
+            State.transactions = [];
+          }
+        } else {
+          State.transactions = txs;
+          saveLocalTransactions(txs);
+        }
       } else if (localSaved) {
         State.transactions = JSON.parse(localSaved);
       } else {
@@ -230,7 +349,7 @@ async function loadData() {
     }
   }
 
-  // Load Categories, Accounts, EMIs, and Budgets
+  // 3. Load Categories, Accounts, EMIs, and Budgets
   State.categories = window.INITIAL_DATA ? [...window.INITIAL_DATA.categories] : [];
   const savedCustomAccounts = localStorage.getItem("tracker_accounts_custom");
   if (savedCustomAccounts) {
@@ -250,28 +369,68 @@ async function loadData() {
   // Load custom saved opening balances if configured
   const savedAccountOpenings = localStorage.getItem("tracker_account_openings");
   if (savedAccountOpenings) {
-    const accOpenings = JSON.parse(savedAccountOpenings);
-    State.accounts.forEach(a => {
-      if (accOpenings[a.name] !== undefined) a.opening_balance = accOpenings[a.name];
-    });
+    try {
+      const accOpenings = JSON.parse(savedAccountOpenings);
+      State.accounts.forEach(a => {
+        if (accOpenings[a.name] !== undefined) a.opening_balance = accOpenings[a.name];
+      });
+    } catch (e) {}
   }
 
   const savedPersonOpenings = localStorage.getItem("tracker_person_opening_balances");
   if (savedPersonOpenings) {
-    State.personOpeningBalances = JSON.parse(savedPersonOpenings);
+    try {
+      State.personOpeningBalances = JSON.parse(savedPersonOpenings);
+    } catch (e) {}
+  }
+
+  // Load custom saved rollovers if configured
+  const savedRollovers = localStorage.getItem("tracker_rollovers");
+  if (savedRollovers) {
+    try {
+      State.rollovers = JSON.parse(savedRollovers);
+    } catch (e) {}
   }
 
   // Load custom saved card bills & due dates
   const savedCardBills = localStorage.getItem("tracker_card_bills");
   if (savedCardBills) {
-    State.cardBills = JSON.parse(savedCardBills);
-    State.accounts.forEach(a => {
-      if (State.cardBills[a.name]) {
-        if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
-        if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
-        if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+    try {
+      State.cardBills = JSON.parse(savedCardBills);
+      State.accounts.forEach(a => {
+        if (State.cardBills[a.name]) {
+          if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
+          if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
+          if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+        }
+      });
+    } catch (e) {}
+  }
+
+  // 4. Load cloud card bills from Supabase if connected
+  if (State.supabase) {
+    try {
+      const { data: bills } = await State.supabase.from("card_bills").select("*");
+      if (bills && bills.length > 0) {
+        bills.forEach(b => {
+          State.cardBills[b.card_name] = {
+            due_date: b.due_date,
+            total_due: parseFloat(b.total_due) || 0,
+            min_due: parseFloat(b.min_due) || 0,
+            is_paid: Boolean(b.is_paid)
+          };
+        });
+        State.accounts.forEach(a => {
+          if (State.cardBills[a.name]) {
+            if (State.cardBills[a.name].due_date) a.payment_due_date = State.cardBills[a.name].due_date;
+            if (State.cardBills[a.name].total_due !== undefined) a.current_bill_amount = State.cardBills[a.name].total_due;
+            if (State.cardBills[a.name].is_paid !== undefined) a.is_bill_paid = State.cardBills[a.name].is_paid;
+          }
+        });
       }
-    });
+    } catch (e) {
+      console.warn("Cloud card bills sync notice:", e);
+    }
   }
 
   populateCategorySelects();
@@ -532,7 +691,12 @@ function getFilteredTransactions() {
 function calculateFinancials() {
   const allActiveApproved = State.transactions.filter(t => t.date && t.date >= State.booksStartDate && t.status !== "rejected");
   const monthTxs = getFilteredTransactions().filter(t => t.status !== "rejected");
-  const rollover = State.rollovers[State.activeMonth] || 0.0;
+  const activeMonthKey = State.activeMonth === "all" ? (State.booksStartDate ? State.booksStartDate.substring(0, 7) : "2026-10") : State.activeMonth;
+  const rollover = (State.rollovers && State.rollovers[State.activeMonth] !== undefined)
+    ? State.rollovers[State.activeMonth]
+    : ((State.rollovers && State.rollovers[activeMonthKey] !== undefined)
+        ? State.rollovers[activeMonthKey]
+        : ((State.rollovers && State.rollovers["2026-10"]) || 0.0));
 
   // 1. LIVE BANK BALANCES (Opening Balance B/F + All Inflows - All Outflows)
   const hdfcAcc = State.accounts.find(a => a.name === "HDFC Bank Account");
@@ -706,10 +870,82 @@ function calculateFinancials() {
     txCount: p.txs.length
   }));
 
+  // 4. EXECUTIVE FINANCIAL SOLVENCY & NET BALANCE ENGINE
+  const totalLiquidCash = hdfcBalance + kotakBalance + cashBalance;
+
+  // Credit Card Liabilities
+  const cards = (State.accounts || []).filter(a => a.type === "Credit Card" && a.is_active !== false);
+  let totalCardLiabilities = 0;
+  cards.forEach(c => {
+    const spends = monthTxs
+      .filter(t => t.account === c.name && t.transaction_type === "Expense")
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const cleanCardName = c.name.toLowerCase().replace("credit card", "").trim();
+    const paid = monthTxs
+      .filter(t => t.category && t.category.toLowerCase().includes(cleanCardName) && (t.transaction_type === "Transfer" || t.transaction_type === "Expense"))
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const opening = c.opening_balance || 0;
+    const cardClosing = Math.max(0, opening + spends - paid);
+    const effectiveDue = c.is_bill_paid ? cardClosing : Math.max(cardClosing, c.current_bill_amount || 0);
+    totalCardLiabilities += effectiveDue;
+  });
+
+  // Active Monthly EMIs
+  const totalMonthlyEmis = (State.emiSchedule || [])
+    .filter(e => (parseInt(e.months_remaining, 10) || 0) > 0)
+    .reduce((sum, e) => sum + (parseFloat(e.monthly_emi) || 0), 0);
+
+  // People Payables & Receivables
+  const peopleReceivables = peopleLedgers
+    .filter(p => p.balanceReceivable > 0)
+    .reduce((sum, p) => sum + p.balanceReceivable, 0);
+
+  const peoplePayables = peopleLedgers
+    .filter(p => p.balanceReceivable < 0)
+    .reduce((sum, p) => sum + Math.abs(p.balanceReceivable), 0);
+
+  // Total Liabilities Due (Cards + EMIs + Dhruv debts to people)
+  const totalLiabilitiesDue = totalCardLiabilities + totalMonthlyEmis + peoplePayables;
+
+  // Income & Inflows
+  const budgetedIncome = (State.defaultBudgets || [])
+    .filter(b => b.type === "Income")
+    .reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+  const totalIncomeBudgeted = budgetedIncome > 0 ? budgetedIncome : 34439;
+  const remainingIncomeToReceive = Math.max(0, totalIncomeBudgeted - totalIncome);
+  const totalExpectedInflows = remainingIncomeToReceive + peopleReceivables;
+
+  // Immediate Liquid Buffer & Current Net Position
+  const currentLiquidBuffer = totalLiquidCash - totalCardLiabilities;
+  const currentNetPosition = totalLiquidCash - totalLiabilitiesDue;
+
+  // Expected Living Spends (Monthly living expense budget)
+  const expectedLivingSpends = 25000;
+  const remainingLivingSpends = Math.max(0, expectedLivingSpends - totalExpense);
+
+  // Projected Month-End Net Standing
+  const projectedMonthEndNet = totalLiquidCash + totalExpectedInflows - totalLiabilitiesDue - remainingLivingSpends;
+  const isNetPositive = projectedMonthEndNet >= 0;
+
   return {
     hdfcBalance,
     kotakBalance,
     cashBalance,
+    totalLiquidCash,
+    totalCardLiabilities,
+    totalMonthlyEmis,
+    peoplePayables,
+    totalLiabilitiesDue,
+    totalIncomeBudgeted,
+    remainingIncomeToReceive,
+    peopleReceivables,
+    totalExpectedInflows,
+    currentLiquidBuffer,
+    expectedLivingSpends,
+    remainingLivingSpends,
+    projectedMonthEndNet,
+    isNetPositive,
+    currentNetPosition,
     hdfcLedger: hdfcLedger.reverse().slice(0, 20),
     kotakLedger: kotakLedger.reverse().slice(0, 20),
     rollover,
@@ -766,16 +1002,122 @@ function renderBankBalances(fin) {
   if (cashEl) cashEl.textContent = fmt(fin.cashBalance);
 }
 
+function renderSolvencyCard(fin) {
+  const card = document.getElementById("solvencyHeroCard");
+  if (!card) return;
+
+  const fmt = (num) => "₹" + Math.round(Math.abs(num)).toLocaleString("en-IN");
+  const isPos = fin.isNetPositive;
+
+  // Toggle card state class
+  if (isPos) {
+    card.classList.add("is-positive");
+    card.classList.remove("is-negative");
+  } else {
+    card.classList.add("is-negative");
+    card.classList.remove("is-positive");
+  }
+
+  // Status Badge
+  const badge = document.getElementById("solvencyStatusBadge");
+  if (badge) {
+    if (isPos) {
+      badge.textContent = `🟢 NET POSITIVE (+${fmt(fin.projectedMonthEndNet)})`;
+    } else {
+      badge.textContent = `🔴 NET NEGATIVE (-${fmt(fin.projectedMonthEndNet)})`;
+    }
+  }
+
+  // Subtitle
+  const subtitle = document.getElementById("solvencySubtitle");
+  if (subtitle) {
+    subtitle.textContent = isPos
+      ? "Fully Solvent: Liquid cash & upcoming inflows comfortably cover all monthly commitments"
+      : "Solvency Alert: Total liabilities & upcoming spends exceed available liquid funds & inflows";
+  }
+
+  // 1. Liquid Cash Available
+  const liquidEl = document.getElementById("solvencyLiquidVal");
+  if (liquidEl) liquidEl.textContent = fmt(fin.totalLiquidCash);
+  const liquidSub = document.getElementById("solvencyLiquidSub");
+  if (liquidSub) liquidSub.textContent = `HDFC (${fmt(fin.hdfcBalance)}) + Kotak (${fmt(fin.kotakBalance)}) + Cash (${fmt(fin.cashBalance)})`;
+
+  // 2. Upcoming Inflows
+  const inflowsEl = document.getElementById("solvencyInflowsVal");
+  if (inflowsEl) inflowsEl.textContent = "+" + fmt(fin.totalExpectedInflows);
+  const inflowsSub = document.getElementById("solvencyInflowsSub");
+  if (inflowsSub) inflowsSub.textContent = `Pending Salary (${fmt(fin.remainingIncomeToReceive)}) + Receivables (${fmt(fin.peopleReceivables)})`;
+
+  // 3. Liabilities Due
+  const liabEl = document.getElementById("solvencyLiabilitiesVal");
+  if (liabEl) liabEl.textContent = "-" + fmt(fin.totalLiabilitiesDue);
+  const liabSub = document.getElementById("solvencyLiabilitiesSub");
+  if (liabSub) liabSub.textContent = `Credit Cards (${fmt(fin.totalCardLiabilities)}) + Active EMIs (${fmt(fin.totalMonthlyEmis)})`;
+
+  // 4. Projected Net Position
+  const netEl = document.getElementById("solvencyNetVal");
+  if (netEl) {
+    netEl.textContent = (isPos ? "+" : "-") + fmt(fin.projectedMonthEndNet);
+    netEl.style.color = isPos ? "var(--income)" : "var(--expense)";
+  }
+  const netSub = document.getElementById("solvencyNetSub");
+  if (netSub) netSub.textContent = isPos ? "Projected Month-End Surplus" : "Projected Month-End Deficit";
+
+  // Dynamic Advice Box
+  const adviceBox = document.getElementById("solvencyAdviceBox");
+  if (adviceBox) {
+    if (isPos) {
+      adviceBox.innerHTML = `
+        <div class="solvency-advice is-positive">
+          <div class="solvency-advice-icon">🛡️</div>
+          <div class="solvency-advice-text">
+            <strong>Financially Solvent & Safe:</strong> You have a projected month-end surplus buffer of <strong>+${fmt(fin.projectedMonthEndNet)}</strong>.
+            Your total liquid cash (<strong>${fmt(fin.totalLiquidCash)}</strong>) plus expected inflows (<strong>${fmt(fin.totalExpectedInflows)}</strong>)
+            will cover all credit card dues & EMIs (<strong>${fmt(fin.totalLiabilitiesDue)}</strong>) and estimated remaining living spends (<strong>${fmt(fin.remainingLivingSpends)}</strong>).
+            ${fin.currentLiquidBuffer < 0 
+              ? `<br><span style="color:var(--warning); font-weight:600;">⚠️ Immediate Liquidity Note:</span> Liquid cash currently trails active card dues by ${fmt(Math.abs(fin.currentLiquidBuffer))}. Once your expected salary/inflows arrive, you will be back in solid surplus.`
+              : `Your immediate liquid buffer is strong at <strong>+${fmt(fin.currentLiquidBuffer)}</strong>.`
+            }
+          </div>
+        </div>
+      `;
+    } else {
+      const deficit = fmt(fin.projectedMonthEndNet);
+      adviceBox.innerHTML = `
+        <div class="solvency-advice is-negative">
+          <div class="solvency-advice-icon">🚨</div>
+          <div class="solvency-advice-text">
+            <strong>Action Needed: Negative Net Position:</strong> Considering all transactions, liabilities, and incoming salary, you have a projected deficit of <strong style="color:var(--expense);">${deficit}</strong>.
+            Total obligations due (Cards & EMIs: <strong>${fmt(fin.totalLiabilitiesDue)}</strong>, remaining living budget: <strong>${fmt(fin.remainingLivingSpends)}</strong>)
+            exceed your liquid cash (<strong>${fmt(fin.totalLiquidCash)}</strong>) and upcoming inflows (<strong>${fmt(fin.totalExpectedInflows)}</strong>).
+            ${fin.peopleReceivables > 0 ? ` Collecting the <strong>${fmt(fin.peopleReceivables)}</strong> owed to you by others will help reduce this deficit.` : ''}
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
 function renderMetrics(fin) {
   const fmt = (num) => "₹" + Math.round(num).toLocaleString("en-IN");
 
-  document.getElementById("metricIncome").textContent = fmt(fin.totalIncome);
-  document.getElementById("metricExpense").textContent = fmt(fin.totalExpense);
-  document.getElementById("metricNet").textContent = fmt(fin.netLeftover);
-  document.getElementById("metricNet").style.color = fin.netLeftover >= 0 ? "var(--income)" : "var(--expense)";
-  document.getElementById("metricSavings").textContent = fmt(fin.totalSavings);
-  document.getElementById("metricDebt").textContent = fmt(fin.totalDebt);
-  document.getElementById("metricRollover").textContent = fmt(fin.rollover);
+  const mIncome = document.getElementById("metricIncome");
+  if (mIncome) mIncome.textContent = fmt(fin.totalIncome);
+  const mExpense = document.getElementById("metricExpense");
+  if (mExpense) mExpense.textContent = fmt(fin.totalExpense);
+  const mNet = document.getElementById("metricNet");
+  if (mNet) {
+    mNet.textContent = fmt(fin.netLeftover);
+    mNet.style.color = fin.netLeftover >= 0 ? "var(--income)" : "var(--expense)";
+  }
+  const mSavings = document.getElementById("metricSavings");
+  if (mSavings) mSavings.textContent = fmt(fin.totalSavings);
+  const mDebt = document.getElementById("metricDebt");
+  if (mDebt) mDebt.textContent = fmt(fin.totalDebt);
+  const mRollover = document.getElementById("metricRollover");
+  if (mRollover) mRollover.textContent = fmt(fin.rollover);
+
+  renderSolvencyCard(fin);
 }
 
 function renderCashFlowSummary(fin) {
@@ -783,25 +1125,51 @@ function renderCashFlowSummary(fin) {
   if (!tbody) return;
 
   const rows = [
-    { label: "Opening Rollover", expected: fin.rollover, actual: fin.rollover, type: "neutral" },
-    { label: "(+) Total Income", expected: 34439, actual: fin.totalIncome, type: "income" },
-    { label: "(-) Living Expenses", expected: 25000, actual: fin.totalExpense, type: "expense" },
-    { label: "(-) Debt & EMIs", expected: 11250, actual: fin.totalDebt, type: "debt" },
-    { label: "(-) Savings & Investments", expected: 1000, actual: fin.totalSavings, type: "savings" },
-    { label: "(=) Net Leftover Balance", expected: 2189, actual: fin.netLeftover, type: "net" }
+    { label: "Opening Rollover", expected: fin.rollover, actual: fin.rollover, type: "neutral", status: "B/F" },
+    { label: "(+) Total Income", expected: fin.totalIncomeBudgeted, actual: fin.totalIncome, type: "income", status: `${fin.totalIncomeBudgeted > 0 ? Math.round((fin.totalIncome / fin.totalIncomeBudgeted) * 100) : 0}% Received` },
+    { label: "(-) Living Expenses", expected: fin.expectedLivingSpends, actual: fin.totalExpense, type: "expense", status: `${fin.expectedLivingSpends > 0 ? Math.round((fin.totalExpense / fin.expectedLivingSpends) * 100) : 0}% Spent` },
+    { label: "Scheduled Loan / EMI Commitments", expected: fin.totalMonthlyEmis, actual: fin.totalDebt, type: "debt", status: fin.totalDebt >= fin.totalMonthlyEmis ? "Paid" : "Due" },
+    { label: "(-) Savings & Investments", expected: 1000, actual: fin.totalSavings, type: "savings", status: `${fin.totalSavings >= 1000 ? 'Funded' : 'Pending'}` },
+    { label: "Liquid Cash Available", expected: fin.totalLiquidCash, actual: fin.totalLiquidCash, type: "liquid", status: "Bank + Cash" },
+    { label: "Outstanding Card Liabilities & Bills", expected: fin.totalCardLiabilities, actual: fin.totalCardLiabilities, type: "card", status: fin.totalCardLiabilities === 0 ? "Clear" : "Unpaid" },
+    { label: "(=) Projected Month-End Net Balance", expected: fin.projectedMonthEndNet, actual: fin.projectedMonthEndNet, type: "net", status: fin.isNetPositive ? "🟢 POSITIVE" : "🔴 NEGATIVE" }
   ];
 
   tbody.innerHTML = rows.map(r => {
     const isNet = r.type === "net";
+    const isLiquid = r.type === "liquid";
+    const isCard = r.type === "card";
     const valClass = r.actual >= 0 ? "" : "text-danger";
+
+    let badgeColor = "var(--primary)";
+    if (r.type === "net") {
+      badgeColor = fin.isNetPositive ? "var(--income)" : "var(--expense)";
+    } else if (r.type === "income") {
+      badgeColor = r.actual >= r.expected ? "var(--income)" : "var(--warning)";
+    } else if (r.type === "expense") {
+      badgeColor = r.actual > r.expected ? "var(--expense)" : "var(--income)";
+    } else if (r.type === "debt") {
+      badgeColor = r.actual >= r.expected ? "var(--income)" : "var(--warning)";
+    } else if (isLiquid) {
+      badgeColor = r.actual > 0 ? "var(--primary)" : "var(--expense)";
+    } else if (isCard) {
+      badgeColor = r.actual === 0 ? "var(--income)" : "var(--expense)";
+    }
+
+    const rowStyle = isNet
+      ? 'font-weight: 800; background: var(--bg-tertiary); border-top: 2px solid var(--border-color);'
+      : (isLiquid || isCard)
+        ? 'font-weight: 600; background: rgba(255, 255, 255, 0.02);'
+        : '';
+
     return `
-      <tr style="${isNet ? 'font-weight: 800; background: var(--bg-tertiary);' : ''}">
-        <td>${r.label}</td>
-        <td>₹${Math.round(r.expected).toLocaleString("en-IN")}</td>
-        <td class="${valClass}">₹${Math.round(r.actual).toLocaleString("en-IN")}</td>
+      <tr style="${rowStyle}">
+        <td><strong>${r.label}</strong></td>
+        <td class="privacy-sensitive">₹${Math.round(r.expected).toLocaleString("en-IN")}</td>
+        <td class="privacy-sensitive ${valClass}">₹${Math.round(r.actual).toLocaleString("en-IN")}</td>
         <td>
-          <span class="badge" style="background: ${r.actual >= r.expected && r.type !== 'expense' ? 'var(--income)' : 'var(--primary)'}; color:#fff">
-            ${r.expected > 0 ? Math.round((r.actual / r.expected) * 100) + '%' : '-'}
+          <span class="badge" style="background: ${badgeColor}; color:#fff; font-weight:700;">
+            ${r.status}
           </span>
         </td>
       </tr>
@@ -896,26 +1264,105 @@ function renderDynamicPersonLedgers(ledgers) {
   }).join("");
 }
 
-// EMI & Debt Schedule (iPhone 17 Pro, Watch, Scooter)
+// EMI & Debt Schedule
 function renderEmiSchedule() {
   const tbody = document.getElementById("emiScheduleTableBody");
   if (!tbody) return;
 
+  if (!State.emiSchedule || State.emiSchedule.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);"><span style="font-size:1.3rem;">🎉</span><br><strong>No Active Loans or EMIs</strong><br><small>You have no active debt schedules. Click "+ Add Loan / EMI" above if any new installments occur.</small></td></tr>`;
+    return;
+  }
+
   tbody.innerHTML = State.emiSchedule.map(e => `
     <tr>
       <td><strong>${e.name}</strong></td>
-      <td class="privacy-sensitive">₹${e.original_amount.toLocaleString("en-IN")}</td>
-      <td><strong class="emi-amount-badge privacy-sensitive">₹${e.monthly_emi.toLocaleString("en-IN")}</strong> / mo</td>
-      <td>${e.total_tenure} mos</td>
+      <td class="privacy-sensitive">₹${(e.original_amount || 0).toLocaleString("en-IN")}</td>
+      <td><strong class="emi-amount-badge privacy-sensitive">₹${(e.monthly_emi || 0).toLocaleString("en-IN")}</strong> / mo</td>
+      <td>${e.total_tenure || 0} mos</td>
       <td>
         <span class="badge" style="background:${e.months_remaining > 0 ? 'var(--primary)' : 'var(--income)'}; color:#fff;">
           ${e.months_remaining > 0 ? e.months_remaining + ' mos left' : '0 (Completed)'}
         </span>
       </td>
-      <td><span class="category-pill">${e.card || e.account}</span></td>
-      <td><em>${e.status}</em></td>
+      <td><span class="category-pill">${e.card || e.account || 'Account'}</span></td>
+      <td><em>${e.status || 'Active'}</em></td>
+      <td>
+        <button type="button" class="btn btn-secondary" style="font-size:0.7rem; padding:0.25rem 0.5rem; color:var(--expense);" onclick="deleteEmi('${e.name}')" title="Delete EMI Schedule">✕</button>
+      </td>
     </tr>
   `).join("");
+}
+
+function openAddEmiModal() {
+  const accSelect = document.getElementById("newEmiAccountSelect");
+  if (accSelect) {
+    accSelect.innerHTML = State.accounts
+      .filter(a => a.is_active !== false)
+      .map(a => `<option value="${a.name}">${a.name}</option>`)
+      .join("");
+  }
+  document.getElementById("newEmiNameInput").value = "";
+  document.getElementById("newEmiOriginalInput").value = "";
+  document.getElementById("newEmiMonthlyInput").value = "";
+  document.getElementById("newEmiTenureInput").value = "12";
+  document.getElementById("newEmiRemainingInput").value = "12";
+  document.getElementById("addEmiModal").classList.add("active");
+}
+
+function closeAddEmiModal() {
+  document.getElementById("addEmiModal").classList.remove("active");
+}
+
+function saveNewEmi() {
+  const name = document.getElementById("newEmiNameInput").value.trim();
+  const card = document.getElementById("newEmiAccountSelect").value;
+  const orig = parseFloat(document.getElementById("newEmiOriginalInput").value) || 0;
+  const monthly = parseFloat(document.getElementById("newEmiMonthlyInput").value) || 0;
+  const tenure = parseInt(document.getElementById("newEmiTenureInput").value) || 12;
+  const remaining = parseInt(document.getElementById("newEmiRemainingInput").value) || tenure;
+
+  if (!name || monthly <= 0) {
+    showToast("Please enter a valid loan/item name and monthly EMI amount!", "warning");
+    return;
+  }
+
+  if (!State.emiSchedule) State.emiSchedule = [];
+  State.emiSchedule = State.emiSchedule.filter(e => e.name.toLowerCase() !== name.toLowerCase());
+  State.emiSchedule.push({
+    name: name,
+    card: card,
+    original_amount: orig || (monthly * tenure),
+    monthly_emi: monthly,
+    total_tenure: tenure,
+    months_remaining: remaining,
+    status: "Active"
+  });
+
+  if (!State.categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    State.categories.push({
+      id: "cat_" + Date.now(),
+      name: name,
+      type: "Debt",
+      budget: monthly,
+      icon: "credit-card",
+      color: "#dc2626"
+    });
+    localStorage.setItem("tracker_categories", JSON.stringify(State.categories));
+  }
+
+  localStorage.setItem("tracker_emi_schedule", JSON.stringify(State.emiSchedule));
+  showToast(`✓ Added ${name} to Loan & EMI Schedule!`, "success");
+  closeAddEmiModal();
+  renderApp();
+}
+
+function deleteEmi(emiName) {
+  if (!confirm(`Are you sure you want to remove the EMI schedule for "${emiName}"?`)) return;
+  State.emiSchedule = State.emiSchedule.filter(e => e.name !== emiName);
+  localStorage.setItem("tracker_emi_schedule", JSON.stringify(State.emiSchedule));
+  showToast(`Removed "${emiName}" from Loan & EMI schedule`, "info");
+  renderApp();
 }
 
 // Unified Card Vault & Credit Card Tracker
@@ -1150,10 +1597,11 @@ function renderCreditCardTracker() {
   }
 }
 
-// Transactions Table
+// Transactions Table & Mobile Card View
 function renderTransactionsTable() {
   const tbody = document.getElementById("transactionsTableBody");
-  if (!tbody) return;
+  const mobileList = document.getElementById("mobileTransactionsList");
+  if (!tbody && !mobileList) return;
 
   const search = (document.getElementById("txSearchInput")?.value || "").toLowerCase();
   const typeFilter = document.getElementById("txTypeFilter")?.value || "all";
@@ -1171,36 +1619,107 @@ function renderTransactionsTable() {
     );
   }
 
-  document.getElementById("txCountBadge").textContent = `${txs.length} Transactions`;
+  const countBadge = document.getElementById("txCountBadge");
+  if (countBadge) countBadge.textContent = `${txs.length} Transactions`;
 
   if (txs.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-          ✨ Fresh start active since <strong>${State.booksStartDate}</strong>! No transactions recorded yet.<br>
-          Click <strong>+ Add Transaction</strong> or let your Gmail script capture your first online transaction.
-        </td>
-      </tr>
-    `;
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+            ✨ Fresh start active since <strong>${State.booksStartDate}</strong>! No transactions recorded yet.<br>
+            Click <strong>+ Add Transaction</strong> or let your Gmail script capture your first online transaction.
+          </td>
+        </tr>
+      `;
+    }
+    if (mobileList) {
+      mobileList.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; background: var(--bg-secondary); border-radius: 16px; border: 1px dashed var(--border-color); color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
+          <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">No Transactions Found</div>
+          <div style="font-size: 0.8rem; line-height: 1.4;">Active since ${State.booksStartDate}. Tap "+ Add Transaction" below to log a spend.</div>
+        </div>
+      `;
+    }
     return;
   }
 
-  tbody.innerHTML = txs.map(t => `
-    <tr>
-      <td style="white-space: nowrap;">${t.date}</td>
-      <td><span class="type-pill ${t.transaction_type}">${t.transaction_type}</span></td>
-      <td><span class="category-pill">${t.category}</span></td>
-      <td style="font-weight: 700; ${t.transaction_type === 'Income' ? 'color: var(--income);' : ''}">
-        ${t.transaction_type === 'Income' ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}
-      </td>
-      <td>${t.description || '-'}</td>
-      <td style="font-size: 0.8rem; color: var(--text-secondary);">${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}</td>
-      <td style="white-space: nowrap;">
-        <button class="btn btn-icon" onclick="editTransaction('${t.id}')" title="Edit">✏️</button>
-        <button class="btn btn-icon" onclick="deleteTransaction('${t.id}')" title="Delete">🗑️</button>
-      </td>
-    </tr>
-  `).join("");
+  // Category Icon resolver
+  const getCategoryIcon = (category, type) => {
+    const c = (category || "").toLowerCase();
+    if (c.includes("food") || c.includes("dining") || c.includes("swiggy") || c.includes("zomato")) return "🍔";
+    if (c.includes("grocery") || c.includes("blinkit") || c.includes("zepto") || c.includes("instamart")) return "🛒";
+    if (c.includes("fuel") || c.includes("petrol") || c.includes("diesel")) return "⛽";
+    if (c.includes("travel") || c.includes("flight") || c.includes("train") || c.includes("uber") || c.includes("ola")) return "🚕";
+    if (c.includes("shopping") || c.includes("amazon") || c.includes("flipkart") || c.includes("myntra")) return "🛍️";
+    if (c.includes("bill") || c.includes("electricity") || c.includes("wifi") || c.includes("recharge")) return "💡";
+    if (c.includes("salary") || c.includes("bonus") || type === "Income") return "💵";
+    if (c.includes("invest") || c.includes("stock") || c.includes("mutual") || c.includes("zerodha") || type === "Savings") return "📈";
+    if (c.includes("emi") || c.includes("loan") || type === "Debt") return "💳";
+    if (type === "Transfer") return "🔄";
+    if (c.includes("health") || c.includes("med") || c.includes("pharmacy")) return "💊";
+    return "🏷️";
+  };
+
+  // 1. Desktop Table
+  if (tbody) {
+    tbody.innerHTML = txs.map(t => `
+      <tr>
+        <td style="white-space: nowrap;">${t.date}</td>
+        <td><span class="type-pill ${t.transaction_type}">${t.transaction_type}</span></td>
+        <td><span class="category-pill">${t.category}</span></td>
+        <td style="font-weight: 700; ${t.transaction_type === 'Income' ? 'color: var(--income);' : ''}">
+          ${t.transaction_type === 'Income' ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}
+        </td>
+        <td>${t.description || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-secondary);">${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}</td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-icon" onclick="editTransaction('${t.id}')" title="Edit">✏️</button>
+          <button class="btn btn-icon" onclick="deleteTransaction('${t.id}')" title="Delete">🗑️</button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  // 2. Mobile Responsive Card List (< 768px)
+  if (mobileList) {
+    mobileList.innerHTML = txs.map(t => {
+      const isIncome = t.transaction_type === "Income";
+      const icon = getCategoryIcon(t.category, t.transaction_type);
+      const amtStr = `${isIncome ? '+' : '-'}₹${parseFloat(t.amount || 0).toLocaleString("en-IN")}`;
+      const descStr = t.description || t.category || "Untitled Transaction";
+      const accStr = `${t.account}${t.to_account ? ' ➔ ' + t.to_account : ''}`;
+      const typeLower = (t.transaction_type || "expense").toLowerCase();
+
+      return `
+        <div class="mobile-tx-card" onclick="editTransaction('${t.id}')">
+          <div class="tx-card-icon-wrapper type-${typeLower}">
+            <span>${icon}</span>
+          </div>
+          <div class="tx-card-info">
+            <div class="tx-card-title">${descStr}</div>
+            <div class="tx-card-meta">
+              <span class="tx-card-date">${t.date}</span>
+              <span class="tx-card-dot">•</span>
+              <span class="tx-card-account-pill">${accStr}</span>
+            </div>
+          </div>
+          <div class="tx-card-value-col">
+            <div class="tx-card-amount ${isIncome ? 'val-income' : 'val-expense'}">${amtStr}</div>
+            <span class="tx-card-cat-badge">${t.category}</span>
+          </div>
+          <div class="tx-card-actions" onclick="event.stopPropagation()">
+            <button class="btn-tx-action" onclick="deleteTransaction('${t.id}')" title="Delete" aria-label="Delete">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
 }
 
 // Review Inbox
@@ -1410,6 +1929,14 @@ function renderCharts() {
 function openBooksSetupModal() {
   document.getElementById("booksStartDateInput").value = State.booksStartDate;
   
+  // Opening Rollover (Brought Forward from September)
+  const activeMonthKey = State.activeMonth === "all" ? (State.booksStartDate ? State.booksStartDate.substring(0, 7) : "2026-10") : State.activeMonth;
+  const rVal = (State.rollovers && State.rollovers[activeMonthKey] !== undefined)
+    ? State.rollovers[activeMonthKey]
+    : ((State.rollovers && State.rollovers["2026-10"] !== undefined) ? State.rollovers["2026-10"] : 0);
+  const rolloverInput = document.getElementById("openBalRollover");
+  if (rolloverInput) rolloverInput.value = rVal;
+
   // Bank accounts
   const hdfc = State.accounts.find(a => a.name === "HDFC Bank Account");
   const kotak = State.accounts.find(a => a.name === "Kotak Bank Account");
@@ -1456,6 +1983,19 @@ function openBooksSetupModal() {
   document.getElementById("booksSetupModal").classList.add("active");
 }
 
+function autoSetRolloverFromLiquidCash() {
+  const hdfc = parseFloat(document.getElementById("openBalHdfc") ? document.getElementById("openBalHdfc").value : 0) || 0;
+  const kotak = parseFloat(document.getElementById("openBalKotak") ? document.getElementById("openBalKotak").value : 0) || 0;
+  const cash = parseFloat(document.getElementById("openBalCash") ? document.getElementById("openBalCash").value : 0) || 0;
+  const totalLiquid = Math.round((hdfc + kotak + cash) * 100) / 100;
+  const rolloverInput = document.getElementById("openBalRollover");
+  if (rolloverInput) {
+    rolloverInput.value = totalLiquid;
+    showToast(`Opening Rollover set to liquid cash sum: ₹${totalLiquid.toLocaleString("en-IN")}`, "info");
+  }
+}
+window.autoSetRolloverFromLiquidCash = autoSetRolloverFromLiquidCash;
+
 function closeBooksSetupModal() {
   document.getElementById("booksSetupModal").classList.remove("active");
 }
@@ -1464,6 +2004,16 @@ function saveBooksSetup() {
   const startDate = document.getElementById("booksStartDateInput").value || "2026-10-01";
   State.booksStartDate = startDate;
   localStorage.setItem("tracker_books_start_date", startDate);
+
+  // Rollover
+  const activeMonthKey = State.activeMonth === "all" ? (State.booksStartDate ? State.booksStartDate.substring(0, 7) : "2026-10") : State.activeMonth;
+  const rolloverInput = document.getElementById("openBalRollover");
+  if (rolloverInput) {
+    const rVal = parseFloat(rolloverInput.value) || 0;
+    if (!State.rollovers) State.rollovers = {};
+    State.rollovers[activeMonthKey] = rVal;
+    localStorage.setItem("tracker_rollovers", JSON.stringify(State.rollovers));
+  }
 
   // Bank accounts
   const hdfc = State.accounts.find(a => a.name === "HDFC Bank Account");
@@ -1495,6 +2045,31 @@ function saveBooksSetup() {
     State.personOpeningBalances[pName] = val;
   });
   localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
+
+  // Sync to Supabase settings for seamless multi-device consistency
+  if (State.supabase) {
+    State.supabase.from("settings").upsert({
+      key: "books_setup",
+      value: {
+        startDate: startDate,
+        accOpenings: accOpenings,
+        personOpenings: State.personOpeningBalances,
+        rollovers: State.rollovers,
+        updatedAt: new Date().toISOString()
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: "key" }).then(() => {
+      console.log("Books setup successfully synced to Supabase cloud");
+    }).catch(err => {
+      console.warn("Could not sync books_setup to Supabase:", err);
+    });
+
+    State.supabase.from("settings").upsert({
+      key: "rollovers",
+      value: State.rollovers,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "key" }).catch(() => {});
+  }
 
   showToast(`Books of Accounts configured starting from ${startDate}!`, "success");
   closeBooksSetupModal();
@@ -1571,18 +2146,33 @@ async function handleExcelSetupUpload(event) {
       const openSheetName = workbook.SheetNames.find(s => /opening/i.test(s));
       if (openSheetName) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets[openSheetName], { header: 1 });
+        const activeMonthKey = State.activeMonth === "all" ? (State.booksStartDate ? State.booksStartDate.substring(0, 7) : "2026-10") : State.activeMonth;
         for (let i = 2; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[0]) continue;
           const accName = String(row[0]).trim();
+          const accType = row[1] ? String(row[1]).trim() : "";
           const openBal = parseFloat(row[2]) || 0;
           const startDate = row[3] ? String(row[3]).trim() : null;
+          const desc = row[4] ? String(row[4]).trim() : "";
 
           if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
             State.booksStartDate = startDate;
             localStorage.setItem("tracker_books_start_date", startDate);
             const dateInput = document.getElementById("booksStartDateInput");
             if (dateInput) dateInput.value = startDate;
+          }
+
+          // Check if this row is Opening Rollover
+          if (accName.toLowerCase().includes("rollover") || accType.toLowerCase().includes("rollover") || desc.toLowerCase().includes("rollover")) {
+            if (!State.rollovers) State.rollovers = {};
+            const rMonth = (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) ? startDate.substring(0, 7) : activeMonthKey;
+            State.rollovers[rMonth] = openBal;
+            localStorage.setItem("tracker_rollovers", JSON.stringify(State.rollovers));
+            const rolloverInput = document.getElementById("openBalRollover");
+            if (rolloverInput) rolloverInput.value = openBal;
+            importCount++;
+            continue;
           }
 
           let acc = State.accounts.find(a => a.name.toLowerCase() === accName.toLowerCase());
@@ -1739,6 +2329,28 @@ async function handleExcelSetupUpload(event) {
       localStorage.setItem("tracker_account_openings", JSON.stringify(accOpenings));
       localStorage.setItem("tracker_person_opening_balances", JSON.stringify(State.personOpeningBalances));
       localStorage.setItem("tracker_categories", JSON.stringify(State.categories));
+      localStorage.setItem("tracker_rollovers", JSON.stringify(State.rollovers));
+
+      // Sync books setup to Supabase cloud if connected
+      if (State.supabase) {
+        State.supabase.from("settings").upsert({
+          key: "books_setup",
+          value: {
+            startDate: State.booksStartDate,
+            accOpenings: accOpenings,
+            personOpenings: State.personOpeningBalances,
+            rollovers: State.rollovers,
+            updatedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" }).catch(() => {});
+
+        State.supabase.from("settings").upsert({
+          key: "rollovers",
+          value: State.rollovers,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" }).catch(() => {});
+      }
 
       if (typeof saveEncryptedVaultToStorage === "function") {
         saveEncryptedVaultToStorage();
@@ -1820,8 +2432,14 @@ async function saveTransaction() {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").upsert(tx);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").upsert(tx);
+      if (sbErr) {
+        console.error("Supabase upsert error:", sbErr);
+        showToast("Cloud sync failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase upsert exception:", e);
+    }
   }
 
   showToast("Transaction saved successfully!", "success");
@@ -1854,8 +2472,14 @@ async function deleteTransaction(id) {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").delete().eq("id", id);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").delete().eq("id", id);
+      if (sbErr) {
+        console.error("Supabase delete error:", sbErr);
+        showToast("Cloud delete failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase delete exception:", e);
+    }
   }
 
   showToast("Transaction deleted.", "info");
@@ -1911,8 +2535,14 @@ async function executeInternalTransfer() {
 
   if (State.supabase) {
     try {
-      await State.supabase.from("transactions").insert(tx);
-    } catch (e) {}
+      const { error: sbErr } = await State.supabase.from("transactions").insert(tx);
+      if (sbErr) {
+        console.error("Supabase transfer error:", sbErr);
+        showToast("Cloud transfer failed: " + sbErr.message, "error");
+      }
+    } catch (e) {
+      console.warn("Supabase transfer exception:", e);
+    }
   }
 
   showToast(`Transferred ₹${amount} from ${fromAcc} to ${toAcc}!`, "success");
@@ -2297,9 +2927,6 @@ function openSettingsModal() {
   const pinInput = document.getElementById("masterPinInput");
   if (pinInput) pinInput.value = State.security.pinHash ? "••••" : "";
 
-  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
-  if (bioCheck) bioCheck.checked = State.security.bioEnabled;
-
   const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
   if (autoLockSelect) autoLockSelect.value = State.security.autoLockTimeout;
 
@@ -2319,7 +2946,8 @@ function closeSettingsModal() {
 }
 
 async function saveSupabaseSettings() {
-  const url = document.getElementById("sbUrlInput").value.trim();
+  const rawUrl = document.getElementById("sbUrlInput").value.trim();
+  const url = cleanSupabaseUrl(rawUrl);
   const key = document.getElementById("sbKeyInput").value.trim();
   const gKey = document.getElementById("geminiKeyInput").value.trim();
 
@@ -2334,7 +2962,6 @@ async function saveSupabaseSettings() {
   // Handle Security & PIN Settings
   const pinCheck = document.getElementById("securityPinEnabledCheckbox");
   const pinInput = document.getElementById("masterPinInput");
-  const bioCheck = document.getElementById("bioAuthEnabledCheckbox");
   const autoLockSelect = document.getElementById("autoLockTimeoutSelect");
 
   if (pinCheck && pinCheck.checked) {
@@ -2352,7 +2979,6 @@ async function saveSupabaseSettings() {
       localStorage.setItem("tracker_pin_enabled", "true");
       localStorage.setItem("tracker_pin_hash", hash);
       localStorage.setItem("tracker_pin_salt", salt);
-      localStorage.setItem("tracker_has_prompted_pin", "true");
       sessionStorage.setItem("tracker_pin_session", enteredPin);
 
       // Derive AES key for in-memory encryption
@@ -2366,14 +2992,6 @@ async function saveSupabaseSettings() {
       localStorage.setItem("tracker_pin_enabled", "true");
     }
 
-    if (bioCheck) {
-      State.security.bioEnabled = bioCheck.checked;
-      localStorage.setItem("tracker_bio_enabled", bioCheck.checked ? "true" : "false");
-      if (bioCheck.checked && !localStorage.getItem("tracker_bio_cred_id")) {
-        localStorage.setItem("tracker_bio_cred_id", "enrolled");
-      }
-    }
-
     if (autoLockSelect) {
       State.security.autoLockTimeout = autoLockSelect.value;
       localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
@@ -2384,14 +3002,24 @@ async function saveSupabaseSettings() {
   }
 
   updateHeaderLockButton();
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
-  }
 
   if (initSupabase()) {
+    // Synchronize security settings for universal PIN across all devices
+    try {
+      await State.supabase.from("settings").upsert({
+        key: "app_security",
+        value: {
+          pinHash: State.security.pinHash,
+          pinSalt: State.security.pinSalt,
+          pinEnabled: State.security.pinEnabled,
+          updatedAt: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+    } catch (sbSecErr) {
+      console.warn("Could not sync app_security to Supabase:", sbSecErr);
+    }
+
     showToast("Settings & Security configurations saved!", "success");
     await loadData();
     renderApp();
@@ -3220,35 +3848,65 @@ const VaultCrypto = {
 // ==============================================================================
 let idleTimer = null;
 
-function initSecurity() {
-  State.security.pinEnabled = localStorage.getItem("tracker_pin_enabled") === "true";
-  State.security.pinHash = localStorage.getItem("tracker_pin_hash") || "";
-  State.security.pinSalt = localStorage.getItem("tracker_pin_salt") || "";
-  State.security.bioEnabled = localStorage.getItem("tracker_bio_enabled") === "true";
-  State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
+async function initSecurity() {
+  const defaultSalt = window.INITIAL_DATA?.security?.pinSalt || "a1b2c3d4e5f60718293a4b5c6d7e8f90";
+  const defaultHash = window.INITIAL_DATA?.security?.pinHash || "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23";
 
-  // Hide biometric button if not supported or not enrolled without distorting 3x4 numpad grid
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+  // Fetch universal PIN from Supabase settings if connected
+  if (State.supabase) {
+    try {
+      const { data, error } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "app_security")
+        .maybeSingle();
+
+      if (!error && data && data.value && data.value.pinHash && data.value.pinSalt) {
+        State.security.pinHash = data.value.pinHash;
+        State.security.pinSalt = data.value.pinSalt;
+        localStorage.setItem("tracker_pin_hash", data.value.pinHash);
+        localStorage.setItem("tracker_pin_salt", data.value.pinSalt);
+        if (data.value.pinEnabled !== undefined) {
+          State.security.pinEnabled = !!data.value.pinEnabled;
+          localStorage.setItem("tracker_pin_enabled", State.security.pinEnabled ? "true" : "false");
+        }
+      } else if (!error && (!data || !data.value || !data.value.pinHash)) {
+        // Seed default universal PIN to Supabase if not yet configured
+        const currentHash = localStorage.getItem("tracker_pin_hash") || defaultHash;
+        const currentSalt = localStorage.getItem("tracker_pin_salt") || defaultSalt;
+        await State.supabase.from("settings").upsert({
+          key: "app_security",
+          value: {
+            pinHash: currentHash,
+            pinSalt: currentSalt,
+            pinEnabled: true,
+            updatedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+      }
+    } catch (e) {
+      console.warn("Could not sync app_security from Supabase:", e);
+    }
   }
+
+  // Fallback to localStorage or universal default
+  if (!State.security.pinHash) {
+    State.security.pinHash = localStorage.getItem("tracker_pin_hash") || defaultHash;
+  }
+  if (!State.security.pinSalt) {
+    State.security.pinSalt = localStorage.getItem("tracker_pin_salt") || defaultSalt;
+  }
+
+  const savedEnabled = localStorage.getItem("tracker_pin_enabled");
+  State.security.pinEnabled = savedEnabled === null ? true : savedEnabled === "true";
+  State.security.autoLockTimeout = localStorage.getItem("tracker_autolock_timeout") || "180000";
 
   updateHeaderLockButton();
 
   // Lock on startup if PIN protection is active
   if (State.security.pinEnabled && State.security.pinHash) {
     lockApp();
-  } else {
-    // First-run passcode setup prompt: gentle 1.2s delay if never prompted
-    const hasPrompted = localStorage.getItem("tracker_has_prompted_pin");
-    if (!hasPrompted) {
-      localStorage.setItem("tracker_has_prompted_pin", "true");
-      setTimeout(() => {
-        openPasscodeSetupModal();
-      }, 1200);
-    }
   }
 
   initAutoLock();
@@ -3279,14 +3937,10 @@ function openPasscodeSetupModal() {
 
   const pinInput = document.getElementById("setupPinInput");
   const confirmInput = document.getElementById("setupConfirmPinInput");
-  const bioCheck = document.getElementById("setupBioAuthCheckbox");
   const autoLockSelect = document.getElementById("setupAutoLockSelect");
 
   if (pinInput) pinInput.value = "";
   if (confirmInput) confirmInput.value = "";
-  if (bioCheck) {
-    bioCheck.checked = !!(window.PublicKeyCredential && (State.security.bioEnabled || !localStorage.getItem("tracker_bio_enabled")));
-  }
   if (autoLockSelect) {
     autoLockSelect.value = State.security.autoLockTimeout || "180000";
   }
@@ -3305,7 +3959,6 @@ function closePasscodeSetupModal() {
 async function savePasscodeFromModal() {
   const pinInput = document.getElementById("setupPinInput");
   const confirmInput = document.getElementById("setupConfirmPinInput");
-  const bioCheck = document.getElementById("setupBioAuthCheckbox");
   const autoLockSelect = document.getElementById("setupAutoLockSelect");
 
   const pin = pinInput ? pinInput.value.trim() : "";
@@ -3339,27 +3992,29 @@ async function savePasscodeFromModal() {
     localStorage.setItem("tracker_pin_enabled", "true");
     localStorage.setItem("tracker_pin_hash", hash);
     localStorage.setItem("tracker_pin_salt", salt);
-    localStorage.setItem("tracker_has_prompted_pin", "true");
     sessionStorage.setItem("tracker_pin_session", pin);
-
-    const bioEnabled = bioCheck ? bioCheck.checked : false;
-    State.security.bioEnabled = bioEnabled;
-    localStorage.setItem("tracker_bio_enabled", bioEnabled ? "true" : "false");
-    if (bioEnabled && !localStorage.getItem("tracker_bio_cred_id")) {
-      localStorage.setItem("tracker_bio_cred_id", "enrolled");
-    }
 
     if (autoLockSelect) {
       State.security.autoLockTimeout = autoLockSelect.value;
       localStorage.setItem("tracker_autolock_timeout", autoLockSelect.value);
     }
 
-    // Preserve 3x4 numpad grid alignment
-    const bioBtn = document.getElementById("bioUnlockBtn");
-    if (bioBtn) {
-      const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-      bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-      bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
+    // Sync to Supabase settings table if connected for universal PIN across all devices
+    if (State.supabase) {
+      try {
+        await State.supabase.from("settings").upsert({
+          key: "app_security",
+          value: {
+            pinHash: hash,
+            pinSalt: salt,
+            pinEnabled: true,
+            updatedAt: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+      } catch (sbErr) {
+        console.warn("Could not sync updated PIN to Supabase settings:", sbErr);
+      }
     }
 
     // Sync settings modal fields if present
@@ -3369,14 +4024,12 @@ async function savePasscodeFromModal() {
     if (pinSec) pinSec.style.display = "block";
     const masterPin = document.getElementById("masterPinInput");
     if (masterPin) masterPin.value = "••••";
-    const settingsBioCheck = document.getElementById("bioAuthEnabledCheckbox");
-    if (settingsBioCheck) settingsBioCheck.checked = bioEnabled;
     const settingsAutoLock = document.getElementById("autoLockTimeoutSelect");
     if (settingsAutoLock && autoLockSelect) settingsAutoLock.value = autoLockSelect.value;
 
     updateHeaderLockButton();
     closePasscodeSetupModal();
-    showToast("Passcode set successfully! Locking Financial OS 🔒", "success");
+    showToast("Universal PIN updated successfully! Locking Financial OS 🔒", "success");
 
     setTimeout(() => {
       lockApp();
@@ -3400,18 +4053,6 @@ function lockApp() {
   const overlay = document.getElementById("securityLockOverlay");
   if (overlay) overlay.classList.add("active");
   updatePinDots();
-
-  // Preserve 3x4 numpad grid alignment
-  const bioBtn = document.getElementById("bioUnlockBtn");
-  if (bioBtn) {
-    const hasBio = !!(window.PublicKeyCredential && State.security.bioEnabled);
-    bioBtn.style.visibility = hasBio ? "visible" : "hidden";
-    bioBtn.style.pointerEvents = hasBio ? "auto" : "none";
-  }
-
-  if (State.security.bioEnabled && window.PublicKeyCredential) {
-    setTimeout(triggerBiometricUnlock, 400);
-  }
 }
 
 async function unlockApp(derivedKey) {
@@ -3464,12 +4105,51 @@ function updatePinDots() {
 
 async function verifyEnteredPin() {
   const pin = State.security.activePinBuffer;
-  const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
+  if (!pin || pin.length !== 4) return;
 
-  if (hash === State.security.pinHash) {
+  let isVerified = false;
+  let derivedKey = null;
+
+  // 1. Direct Web-Based Authentication against live Supabase cloud
+  if (State.supabase) {
+    try {
+      const { data, error } = await State.supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "app_security")
+        .maybeSingle();
+
+      if (!error && data && data.value && data.value.pinHash && data.value.pinSalt) {
+        const liveHash = data.value.pinHash;
+        const liveSalt = data.value.pinSalt;
+        const testHash = await VaultCrypto.hashPin(pin, liveSalt);
+
+        if (testHash === liveHash) {
+          isVerified = true;
+          State.security.pinHash = liveHash;
+          State.security.pinSalt = liveSalt;
+          localStorage.setItem("tracker_pin_hash", liveHash);
+          localStorage.setItem("tracker_pin_salt", liveSalt);
+          derivedKey = await VaultCrypto.deriveAesKey(pin, liveSalt);
+        }
+      }
+    } catch (e) {
+      console.warn("Live cloud PIN check notice:", e);
+    }
+  }
+
+  // 2. Fallback to cached/local hash if offline or cloud check did not match
+  if (!isVerified && State.security.pinHash && State.security.pinSalt) {
+    const hash = await VaultCrypto.hashPin(pin, State.security.pinSalt);
+    if (hash === State.security.pinHash) {
+      isVerified = true;
+      derivedKey = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
+    }
+  }
+
+  if (isVerified) {
     sessionStorage.setItem("tracker_pin_session", pin);
-    const key = await VaultCrypto.deriveAesKey(pin, State.security.pinSalt);
-    await unlockApp(key);
+    await unlockApp(derivedKey);
   } else {
     const dots = document.querySelectorAll("#pinDotsContainer .pin-dot");
     dots.forEach(d => d.classList.add("error"));
@@ -3479,44 +4159,6 @@ async function verifyEnteredPin() {
       State.security.activePinBuffer = "";
       updatePinDots();
     }, 600);
-  }
-}
-
-async function triggerBiometricUnlock() {
-  if (!window.PublicKeyCredential || !State.security.bioEnabled) return;
-  const credId = localStorage.getItem("tracker_bio_cred_id");
-  if (!credId) return;
-
-  try {
-    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
-    const publicKeyReq = {
-      challenge,
-      userVerification: "required",
-      timeout: 60000
-    };
-    if (credId && credId !== "enrolled") {
-      try {
-        const rawIdBytes = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
-        publicKeyReq.allowCredentials = [{
-          id: rawIdBytes,
-          type: "public-key"
-        }];
-      } catch (e) {}
-    }
-    const assertion = await navigator.credentials.get({ publicKey: publicKeyReq });
-
-    if (assertion) {
-      // Biometric verified! If a cached PIN is available in sessionStorage, derive key
-      const cachedPin = sessionStorage.getItem("tracker_pin_session");
-      if (cachedPin && State.security.pinSalt) {
-        const key = await VaultCrypto.deriveAesKey(cachedPin, State.security.pinSalt);
-        await unlockApp(key);
-      } else {
-        await unlockApp(null);
-      }
-    }
-  } catch (err) {
-    console.warn("Biometric authentication skipped or dismissed:", err);
   }
 }
 
@@ -3531,12 +4173,21 @@ function initAutoLock() {
     window.addEventListener(ev, resetIdleTimer, { passive: true });
   });
 
-  // Lock immediately on tab switch / phone lock
+  // Handle visibility changes: lock when hidden, sync fresh cloud data when shown
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && State.security.pinEnabled) {
       if (State.security.autoLockTimeout === "immediate" || State.security.autoLockTimeout !== "never") {
         lockApp();
       }
+    } else if (!document.hidden && State.supabase) {
+      console.log("App foregrounded: fetching fresh data from Supabase cloud...");
+      loadData().then(() => renderApp());
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (State.supabase) {
+      loadData().then(() => renderApp());
     }
   });
 
@@ -4138,10 +4789,20 @@ function switchMobileTab(tabId) {
     d.classList.toggle("active", d.getAttribute("data-tab") === tabId);
   });
   document.querySelectorAll(".nav-tab").forEach(t => {
-    t.classList.toggle("active", t.getAttribute("data-tab") === tabId);
+    const isActive = t.getAttribute("data-tab") === tabId;
+    t.classList.toggle("active", isActive);
+    if (isActive) {
+      t.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
   });
   document.querySelectorAll(".tab-pane").forEach(p => {
     p.classList.toggle("active", p.id === tabId);
   });
+  if (tabId === "analytics") {
+    setTimeout(renderCharts, 100);
+  }
+  if (window.lucide) {
+    lucide.createIcons();
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }

@@ -1,4 +1,5 @@
 .DS_Store
 *.tmp
 *.xlsx
+*.mp4
 !Dhruv_Financial_OS_Setup_Template.xlsx

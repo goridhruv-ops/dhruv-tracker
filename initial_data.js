@@ -6,6 +6,17 @@ window.INITIAL_DATA = {
   booksStartDate: "2026-10-01",
   activeMonth: "2026-10",
   transactions: [], // Fresh start: 0 active transactions!
+  security: {
+    defaultPin: "1234",
+    pinHash: "ca1be9e2534f95e439dd905233c2cadf4be34117c0c9a790965f412ceb14ce23",
+    pinSalt: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    pinEnabled: true,
+    autoLockTimeout: "180000"
+  },
+  supabaseConfig: {
+    url: "https://kvqtfigjmryxztdbkgcg.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2cXRmaWdqbXJ5eHp0ZGJrZ2NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3Njg2ODYsImV4cCI6MjEwNjM0NDY4Nn0.CWbm4WwvLsqZccgWaMClCJ8JxmCchLVRlaYvDEhiC1o"
+  },
   accounts: [
     {
         "color":  "#004c8f",
@@ -100,35 +111,7 @@ window.INITIAL_DATA = {
     "Bismarck":  0,
     "Dad":  0
 },
-  emiSchedule: [
-    {
-        "name":  "iPhone 17 Pro EMI",
-        "monthly_emi":  11250,
-        "original_amount":  135000,
-        "card":  "ICICI - Coral Credit Card",
-        "total_tenure":  12,
-        "status":  "Active (Starts Oct 2026)",
-        "months_remaining":  12
-    },
-    {
-        "name":  "Watch EMI",
-        "monthly_emi":  2894.67,
-        "original_amount":  8418.07,
-        "card":  "ICICI - Amazon Pay Credit Card",
-        "total_tenure":  3,
-        "status":  "Closed in Aug 2026",
-        "months_remaining":  0
-    },
-    {
-        "name":  "Scooter Loan (L\u0026T Finance)",
-        "monthly_emi":  8265,
-        "original_amount":  45000,
-        "card":  "HDFC Bank Account",
-        "total_tenure":  6,
-        "status":  "Closed in July 2026",
-        "months_remaining":  0
-    }
-],
+  emiSchedule: [],
   categories: [
     {
         "color":  "#10b981",
@@ -305,33 +288,15 @@ window.INITIAL_DATA = {
         "type":  "Expense"
     },
     {
-        "color":  "#4338ca",
-        "icon":  "smartphone",
-        "name":  "iPhone 17 Pro EMI",
-        "type":  "Debt"
-    },
-    {
         "color":  "#dc2626",
-        "icon":  "graduation-cap",
-        "name":  "Education Loan (Sem1 Fee)",
+        "icon":  "credit-card",
+        "name":  "Loan / EMI Payment",
         "type":  "Debt"
     },
     {
         "color":  "#b91c1c",
         "icon":  "truck",
         "name":  "Scooter Loan (L\u0026T Finance)",
-        "type":  "Debt"
-    },
-    {
-        "color":  "#991b1b",
-        "icon":  "watch",
-        "name":  "Watch EMI",
-        "type":  "Debt"
-    },
-    {
-        "color":  "#7f1d1d",
-        "icon":  "glasses",
-        "name":  "Lenskart EMI",
         "type":  "Debt"
     },
     {
@@ -481,12 +446,7 @@ window.INITIAL_DATA = {
         "category":  "Emergency Fund",
         "type":  "Savings"
     },
-    {
-        "amount":  11250,
-        "category":  "iPhone 17 Pro EMI",
-        "type":  "Debt"
-    }
-],
+    ],
   rollovers: {
     "2026-10": 25000.00,
     "2026-11": 0.00,

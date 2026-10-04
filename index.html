@@ -3,15 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Dhruv's Financial OS | Modern Budget Tracker</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261001_v7">
   
   <!-- Supabase & Chart.js CDNs (GitHub Pages Ready) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Pre-loaded Clean Setup for 1st October Fresh Start -->
-  <script src="initial_data.js"></script>
+  <script src="initial_data.js?v=20261001_v6"></script>
 
   <!-- Lucide Vector Micro-Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -22,39 +25,89 @@
 <body>
 
   <!-- Fullscreen Dual-Tier Security Lock Overlay -->
-  <div id="securityLockOverlay" class="security-lock-overlay">
+  <div id="securityLockOverlay" class="security-lock-overlay" role="dialog" aria-modal="true" aria-label="Passcode Security Vault">
     <div class="lock-card">
-      <div class="lock-icon-badge"><i data-lucide="lock" style="width:28px;height:28px;color:#818cf8;"></i></div>
-      <h2 class="lock-title">Dhruv Financial OS</h2>
-      <p class="lock-subtitle" id="lockScreenSubtitle">Enter 4-Digit Passcode to Unlock</p>
+      <div class="lock-header-section">
+        <div class="lock-icon-badge">
+          <svg class="vault-shield-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 8v4"/>
+            <path d="M12 16h.01"/>
+          </svg>
+        </div>
+        <h2 class="lock-title">Dhruv Financial OS</h2>
+        <p class="lock-subtitle" id="lockScreenSubtitle">
+          Enter Passcode to Access Vault
+          <span class="lock-cloud-status">
+            <span class="status-pulse-dot"></span> End-to-End Encrypted Cloud
+          </span>
+        </p>
+      </div>
 
       <!-- PIN Indicator Dots -->
-      <div class="pin-dots-container" id="pinDotsContainer">
+      <div class="pin-dots-container" id="pinDotsContainer" aria-label="PIN entry status">
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
       </div>
 
-      <!-- Native Touch Numpad -->
+      <!-- Ergonomic Native 3x4 Touch Numpad -->
       <div class="pin-keypad">
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('1')">1</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('2')">2</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('3')">3</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('4')">4</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('5')">5</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('6')">6</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('7')">7</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('8')">8</button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('9')">9</button>
-        <button type="button" class="keypad-btn action-btn" id="bioUnlockBtn" onclick="triggerBiometricUnlock()" title="Face ID / Touch ID" style="visibility:hidden; pointer-events:none;"><i data-lucide="scan-face" style="width:20px;height:20px;"></i></button>
-        <button type="button" class="keypad-btn" onclick="enterPinDigit('0')">0</button>
-        <button type="button" class="keypad-btn action-btn" onclick="deletePinDigit()" title="Delete">⌫</button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('1')" aria-label="1">
+          <span class="keypad-num">1</span>
+          <span class="keypad-sub">&nbsp;</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('2')" aria-label="2 ABC">
+          <span class="keypad-num">2</span>
+          <span class="keypad-sub">ABC</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('3')" aria-label="3 DEF">
+          <span class="keypad-num">3</span>
+          <span class="keypad-sub">DEF</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('4')" aria-label="4 GHI">
+          <span class="keypad-num">4</span>
+          <span class="keypad-sub">GHI</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('5')" aria-label="5 JKL">
+          <span class="keypad-num">5</span>
+          <span class="keypad-sub">JKL</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('6')" aria-label="6 MNO">
+          <span class="keypad-num">6</span>
+          <span class="keypad-sub">MNO</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('7')" aria-label="7 PQRS">
+          <span class="keypad-num">7</span>
+          <span class="keypad-sub">PQRS</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('8')" aria-label="8 TUV">
+          <span class="keypad-num">8</span>
+          <span class="keypad-sub">TUV</span>
+        </button>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('9')" aria-label="9 WXYZ">
+          <span class="keypad-num">9</span>
+          <span class="keypad-sub">WXYZ</span>
+        </button>
+        <div class="keypad-spacer" aria-hidden="true"></div>
+        <button type="button" class="keypad-btn" onclick="enterPinDigit('0')" aria-label="0 plus">
+          <span class="keypad-num">0</span>
+          <span class="keypad-sub">+</span>
+        </button>
+        <button type="button" class="keypad-btn action-btn delete-btn" onclick="deletePinDigit()" title="Delete" aria-label="Delete last digit">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+            <line x1="18" y1="9" x2="12" y2="15"/>
+            <line x1="12" y1="9" x2="18" y2="15"/>
+          </svg>
+        </button>
       </div>
 
-      <!-- Tier-1 Quick Log Action (Allows fast expense logging with zero passcode friction) -->
+      <!-- Tier-1 Quick Log Action -->
       <button type="button" class="btn-quick-log-trigger" onclick="openQuickLogModal()">
-        ⚡ Quick Log Spend (No Passcode Needed)
+        <span class="quick-log-icon">⚡</span>
+        <span>Quick Log Spend <span class="quick-log-sub">(No Passcode Needed)</span></span>
       </button>
     </div>
   </div>
@@ -64,8 +117,11 @@
     <div class="container header-content">
       <div class="logo-area">
         <div class="logo-icon"><i data-lucide="wallet-cards" style="width:20px;height:20px;color:#818cf8;"></i></div>
-        <div>
-          <div class="logo-title">Dhruv Gori | Financial OS</div>
+        <div class="logo-text-block">
+          <div class="logo-title-row">
+            <span class="logo-title">Dhruv OS</span>
+            <span id="syncStatusBadge" class="badge header-sync-badge" onclick="openSettingsModal()" title="Database Connection Status (Click for Settings)">● Local Mode</span>
+          </div>
           <div class="logo-subtitle">Real-time Budget, Bank Balances & Automated Expense Tracker</div>
         </div>
       </div>
@@ -112,17 +168,14 @@
         </button>
 
         <!-- Supabase Settings Button -->
-        <button class="btn btn-icon" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
+        <button class="btn btn-icon desktop-btn" onclick="openSettingsModal()" title="Database, Security & Gemini Settings">
           <i data-lucide="settings" style="width:16px;height:16px;"></i>
         </button>
 
         <!-- Theme Toggle (Auto / Dark / Light) -->
-        <button class="btn btn-icon" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
+        <button class="btn btn-icon desktop-btn" id="themeToggleBtn" onclick="cycleTheme()" title="Theme: Auto (System) / Dark / Light">
           <i data-lucide="sun-moon" style="width:16px;height:16px;"></i>
         </button>
-
-        <!-- Status Badge -->
-        <span id="syncStatusBadge" class="badge">● Local Mode</span>
       </div>
     </div>
   </header>
@@ -226,6 +279,49 @@
           </div>
         </div>
 
+        <!-- Executive Financial Solvency & Net Balance Standing -->
+        <div class="solvency-hero-card" id="solvencyHeroCard">
+          <div class="solvency-header">
+            <div class="solvency-title-group">
+              <span class="solvency-badge" id="solvencyStatusBadge">🟢 NET POSITIVE (+₹0)</span>
+              <span class="solvency-subtitle" id="solvencySubtitle">Factoring liquid cash, upcoming salary & all card dues</span>
+            </div>
+            <div class="solvency-pill-action">
+              <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=cards-emis]').click()" style="font-size:0.75rem; padding:0.35rem 0.75rem;">
+                Review Liabilities →
+              </button>
+            </div>
+          </div>
+
+          <!-- 4-Way Financial Standing Grid -->
+          <div class="solvency-grid">
+            <div class="solvency-item item-liquid">
+              <span class="solvency-label">1. Liquid Cash Available</span>
+              <div class="solvency-val privacy-sensitive" id="solvencyLiquidVal">₹0</div>
+              <small class="solvency-sub" id="solvencyLiquidSub">HDFC + Kotak + Cash</small>
+            </div>
+            <div class="solvency-item item-inflows">
+              <span class="solvency-label">2. (+) Upcoming Inflows</span>
+              <div class="solvency-val privacy-sensitive" id="solvencyInflowsVal">+₹0</div>
+              <small class="solvency-sub" id="solvencyInflowsSub">Pending Salary & Receivables</small>
+            </div>
+            <div class="solvency-item item-liabilities">
+              <span class="solvency-label">3. (-) Card Dues & EMIs</span>
+              <div class="solvency-val privacy-sensitive" id="solvencyLiabilitiesVal">-₹0</div>
+              <small class="solvency-sub" id="solvencyLiabilitiesSub">Credit Cards + Active EMIs</small>
+            </div>
+            <div class="solvency-item item-net">
+              <span class="solvency-label">4. (=) Projected Net Position</span>
+              <div class="solvency-val privacy-sensitive" id="solvencyNetVal">₹0</div>
+              <small class="solvency-sub" id="solvencyNetSub">Net Surplus Buffer</small>
+            </div>
+          </div>
+
+          <div class="solvency-advice-box" id="solvencyAdviceBox">
+            <!-- Dynamic advisory text populated by JS -->
+          </div>
+        </div>
+
         <!-- Executive KPI Cards -->
         <div class="metrics-grid">
           <div class="metric-card card-income">
@@ -270,16 +366,16 @@
               <span class="metric-icon">💳</span>
             </div>
             <div class="metric-value privacy-sensitive" id="metricDebt">₹0</div>
-            <div class="metric-sub">iPhone 17 Pro, Watch EMI</div>
+            <div class="metric-sub">Active Loans & EMIs</div>
           </div>
 
-          <div class="metric-card card-cards">
+          <div class="metric-card card-cards" onclick="openBooksSetupModal()" style="cursor: pointer;" title="Click to edit Opening Rollover">
             <div class="metric-header">
               <span class="metric-label">Opening Rollover</span>
               <span class="metric-icon">🔄</span>
             </div>
             <div class="metric-value privacy-sensitive" id="metricRollover">₹0</div>
-            <div class="metric-sub">Brought forward in Oct</div>
+            <div class="metric-sub">Brought forward in Oct (Click to edit)</div>
           </div>
         </div>
 
@@ -452,8 +548,11 @@
           <div class="section-header">
             <div>
               <h3 class="section-title">📅 Loan & EMI Payoff Schedule</h3>
-              <p class="section-desc">Tracking for active iPhone 17 Pro EMI (starts Oct) and historical loans</p>
+              <p class="section-desc">Track active loans, no-cost EMIs, and monthly payoff schedules</p>
             </div>
+            <button class="btn btn-primary" onclick="openAddEmiModal()">
+              + Add Loan / EMI
+            </button>
           </div>
           <div class="table-responsive">
             <table class="data-table">
@@ -466,6 +565,7 @@
                   <th>Months Remaining</th>
                   <th>Linked Card / Account</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="emiScheduleTableBody"></tbody>
@@ -490,36 +590,38 @@
           </div>
 
           <!-- Filters Bar -->
-          <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
-            <input type="text" id="txSearchInput" class="form-input" style="max-width: 280px;" placeholder="🔍 Search description, category..." oninput="renderTransactionsTable()">
+          <div class="tx-filters-bar">
+            <input type="text" id="txSearchInput" class="form-input tx-search-box" placeholder="🔍 Search description, category, account..." oninput="renderTransactionsTable()">
             
-            <select id="txTypeFilter" class="form-select" style="max-width: 160px;" onchange="renderTransactionsTable()">
-              <option value="all">All Types</option>
-              <option value="Expense">Expense</option>
-              <option value="Income">Income</option>
-              <option value="Debt">Debt</option>
-              <option value="Savings">Savings</option>
-              <option value="Transfer">Transfer</option>
-            </select>
+            <div class="tx-filters-selects">
+              <select id="txTypeFilter" class="form-select" onchange="renderTransactionsTable()">
+                <option value="all">All Types</option>
+                <option value="Expense">Expense</option>
+                <option value="Income">Income</option>
+                <option value="Debt">Debt</option>
+                <option value="Savings">Savings</option>
+                <option value="Transfer">Transfer</option>
+              </select>
 
-            <select id="txAccountFilter" class="form-select" style="max-width: 220px;" onchange="renderTransactionsTable()">
-              <option value="all">All Accounts</option>
-              <option value="HDFC Bank Account">HDFC Bank Account</option>
-              <option value="Kotak Bank Account">Kotak Bank Account</option>
-              <option value="ICICI - Amazon Pay Credit Card">ICICI - Amazon Pay</option>
-              <option value="ICICI - Coral Credit Card">ICICI - Coral</option>
-              <option value="American Express Credit Card">American Express</option>
-              <option value="Roar CC Rupay">Roar CC Rupay</option>
-              <option value="Cash">Cash</option>
-            </select>
+              <select id="txAccountFilter" class="form-select" onchange="renderTransactionsTable()">
+                <option value="all">All Accounts</option>
+                <option value="HDFC Bank Account">HDFC Bank Account</option>
+                <option value="Kotak Bank Account">Kotak Bank Account</option>
+                <option value="ICICI - Amazon Pay Credit Card">ICICI - Amazon Pay</option>
+                <option value="ICICI - Coral Credit Card">ICICI - Coral</option>
+                <option value="American Express Credit Card">American Express</option>
+                <option value="Roar CC Rupay">Roar CC Rupay</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
 
-            <button class="btn btn-secondary" onclick="openAddTransactionModal()" style="margin-left: auto;">
+            <button class="btn btn-secondary desktop-btn" onclick="openAddTransactionModal()" style="margin-left: auto;">
               + New Entry
             </button>
           </div>
 
-          <!-- Transactions Table -->
-          <div class="table-responsive">
+          <!-- Desktop Transactions Table -->
+          <div class="table-responsive desktop-tx-table">
             <table class="data-table">
               <thead>
                 <tr>
@@ -535,6 +637,9 @@
               <tbody id="transactionsTableBody"></tbody>
             </table>
           </div>
+
+          <!-- Mobile Transactions Card List (< 768px) -->
+          <div class="mobile-tx-list" id="mobileTransactionsList"></div>
         </div>
       </section>
 
@@ -758,6 +863,23 @@
         <div class="form-group">
           <label class="form-label">📅 Books Start Date</label>
           <input type="date" id="booksStartDateInput" class="form-input" value="2026-10-01" required>
+        </div>
+
+        <!-- Section 0: Opening Rollover -->
+        <div class="books-setup-section" style="background: rgba(99, 102, 241, 0.08); border: 1px solid var(--primary-light); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div class="books-setup-title" style="color: var(--primary); font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+            <span>🔄 Opening Rollover (Brought Forward from September)</span>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.6rem;" onclick="autoSetRolloverFromLiquidCash()" title="Set rollover equal to sum of Bank + Cash opening balances">
+              Auto-Set = Liquid Cash
+            </button>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem;">
+            The surplus unallocated cash balance brought forward from September into October fresh books.
+          </p>
+          <div class="opening-row" style="margin-bottom: 0;">
+            <div><strong>Opening Rollover (₹)</strong><br><small style="color:var(--text-muted)">September Surplus B/F</small></div>
+            <input type="number" step="0.01" id="openBalRollover" class="form-input" placeholder="0.00" style="font-weight: 700; font-size: 1.05rem;">
+          </div>
         </div>
 
         <!-- Section 1: Bank Accounts -->
@@ -989,6 +1111,59 @@
   </div>
 
   <!-- ========================================== -->
+  <!-- MODAL: ADD / CONFIGURE LOAN OR EMI         -->
+  <!-- ========================================== -->
+  <div id="addEmiModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 Add New Loan / EMI</h3>
+        <button class="modal-close" onclick="closeAddEmiModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Configure a new loan or installment plan. This will track your monthly liability and remaining payoff duration.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Loan / Item Name *</label>
+          <input type="text" id="newEmiNameInput" class="form-input" placeholder="e.g. Laptop EMI, Two-Wheeler Loan, Personal Loan" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Linked Card / Account *</label>
+          <select id="newEmiAccountSelect" class="form-select"></select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Original Loan Amount (₹) *</label>
+            <input type="number" step="0.01" id="newEmiOriginalInput" class="form-input" placeholder="e.g. 60000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Monthly EMI (₹) *</label>
+            <input type="number" step="0.01" id="newEmiMonthlyInput" class="form-input" placeholder="e.g. 5000" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label">Total Tenure (Months) *</label>
+            <input type="number" id="newEmiTenureInput" class="form-input" placeholder="e.g. 12" value="12" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Months Remaining *</label>
+            <input type="number" id="newEmiRemainingInput" class="form-input" placeholder="e.g. 12" value="12" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAddEmiModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveNewEmi()">Save Loan / EMI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- MODAL: SETTINGS & GEMINI API CONFIG        -->
   <!-- ========================================== -->
   <div id="settingsModal" class="modal-overlay">
@@ -1032,12 +1207,6 @@
           <div class="form-group" style="margin-bottom:0.75rem;">
             <label class="form-label">Set / Change 4-Digit Passcode</label>
             <input type="password" id="masterPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="e.g. 1234">
-          </div>
-          <div class="form-group" style="margin-bottom:0.75rem;">
-            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem;">
-              <input type="checkbox" id="bioAuthEnabledCheckbox">
-              Enable Face ID / Touch ID (Biometrics)
-            </label>
           </div>
           <div class="form-group" style="margin-bottom:0;">
             <label class="form-label">Auto-Lock Inactivity Timeout</label>
@@ -1147,7 +1316,7 @@
             <span class="badge" style="background:var(--primary-light); color:var(--primary); font-size:0.68rem;">AES-256 GCM</span>
           </div>
           <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
-            These credentials are encrypted client-side using your passcode before saving. They are only decrypted when unlocked with your PIN or Face ID.
+            These credentials are encrypted client-side using your passcode before saving. They are only decrypted when unlocked with your PIN.
           </p>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
@@ -1300,17 +1469,6 @@
           <input type="password" id="setupConfirmPinInput" class="form-input" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" placeholder="••••" autocomplete="new-password" style="font-size:1.4rem; letter-spacing:0.5rem; text-align:center; font-weight:700;" required>
         </div>
 
-        <!-- Biometric Toggle -->
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.875rem; font-weight:500;">
-            <input type="checkbox" id="setupBioAuthCheckbox" checked>
-            <span>Enable Face ID / Touch ID (Biometrics)</span>
-          </label>
-          <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-left:1.6rem; margin-top:0.25rem;">
-            Unlock quickly without typing your PIN every time on supported devices.
-          </small>
-        </div>
-
         <!-- Auto-Lock Inactivity Timeout -->
         <div class="form-group" style="margin-bottom:0.5rem;">
           <label class="form-label" for="setupAutoLockSelect">Auto-Lock Inactivity Timeout</label>
@@ -1338,27 +1496,28 @@
       <span class="dock-icon"><i data-lucide="layout-dashboard"></i></span>
       <span class="dock-label">Home</span>
     </button>
+    <button class="dock-item" data-tab="transactions" onclick="switchMobileTab('transactions')">
+      <span class="dock-icon"><i data-lucide="receipt"></i></span>
+      <span class="dock-label">Spends</span>
+    </button>
+    <div class="dock-fab-wrapper">
+      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction" aria-label="Add Transaction">
+        <i data-lucide="plus"></i>
+      </button>
+    </div>
     <button class="dock-item" data-tab="bank-ledgers" onclick="switchMobileTab('bank-ledgers')">
       <span class="dock-icon"><i data-lucide="landmark"></i></span>
       <span class="dock-label">Ledgers</span>
     </button>
-    <div class="dock-fab-wrapper">
-      <button class="dock-fab" onclick="openAddTransactionModal()" title="Add Transaction"><i data-lucide="plus"></i></button>
-    </div>
     <button class="dock-item" data-tab="cards-emis" onclick="switchMobileTab('cards-emis')">
       <span class="dock-icon"><i data-lucide="credit-card"></i></span>
       <span class="dock-label">Cards</span>
-    </button>
-    <button class="dock-item" data-tab="review" onclick="switchMobileTab('review')">
-      <span class="dock-icon"><i data-lucide="inbox"></i></span>
-      <span class="dock-label">Inbox</span>
-      <span id="dockReviewBadge" class="dock-badge" style="display:none;">0</span>
     </button>
   </nav>
 
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- Core Controller Script -->
-  <script src="app.js"></script>
+  <script src="app.js?v=20261001_v7"></script>
 </body>
 </html>

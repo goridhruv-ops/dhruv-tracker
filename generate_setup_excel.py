@@ -84,6 +84,7 @@ def style_sheet(ws, title_text, headers, rows):
 ws1 = wb.create_sheet(title="Opening_Balances")
 headers1 = ["Account Name", "Account Type", "Opening Balance (₹)", "Books Start Date", "Primary Purpose / Description"]
 rows1 = [
+    ["Opening Rollover (B/F from September)", "Rollover", 25000, "2026-10-01", "Surplus cash carried forward from previous month"],
     ["HDFC Bank Account", "Bank", 25000, "2026-10-01", "Primary Salary Account, Debits, Rent & Bills"],
     ["Kotak Bank Account", "Bank", 10000, "2026-10-01", "Stock Trading & Investment Liquidity Account"],
     ["Cash in Hand", "Cash", 1000, "2026-10-01", "Physical Wallet & Cash Expenses"]
@@ -129,8 +130,7 @@ headers4 = [
     "Monthly EMI (₹)", "Total Tenure (Months)", "Start Date", "Remaining Months", "Status"
 ]
 rows4 = [
-    ["iPhone 17 Pro EMI", "ICICI - Coral Credit Card", 135000, 11250, 12, "2026-10-01", 12, "Active"],
-    ["Watch EMI", "ICICI - Coral Credit Card", 8418.07, 2894.60, 3, "2026-08-01", 1, "Active (Final payoff in Oct)"]
+    # Clean fresh slate: Add your active loans or EMIs below if any occur
 ]
 style_sheet(ws4, "📅 DHRUV FINANCIAL OS — ACTIVE LOANS & EMI REPAYMENT SCHEDULE", headers4, rows4)
 
@@ -146,7 +146,7 @@ rows5 = [
     ["Shopping & Lifestyle", "Expense", 4000, "🛍️ Clothes, Amazon, Personal purchases"],
     ["Bills & Utilities", "Expense", 3000, "💡 Electricity, Wi-Fi, Mobile recharge"],
     ["Entertainment & OTT", "Expense", 1000, "🎬 Netflix, Spotify, Cinema"],
-    ["iPhone 17 Pro EMI", "Debt", 11250, "📱 Coral Card Monthly EMI"],
+    ["Loan / EMI Payment", "Debt", 0, "💳 General EMI / Loan (Add specific when they occur)"],
     ["Salary", "Income", 25000, "💼 Monthly Professional Salary"],
     ["Kotak Transfer", "Income", 9439, "📈 Liquidity / Trading pull-in"],
     ["Emergency Fund", "Savings", 1000, "🛡️ Savings reserve"]
